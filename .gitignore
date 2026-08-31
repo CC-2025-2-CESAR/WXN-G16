@@ -1,0 +1,23 @@
+# ---------------------------------------------------------------------------
+# Regras de escopo geral do monorepo.
+# backend/ e frontend/ ja tem seus proprios .gitignore especificos
+# (Maven/Java e Node/Vite, respectivamente) - as regras abaixo cobrem apenas
+# a raiz do repositorio.
+# ---------------------------------------------------------------------------
+
+# Variaveis de ambiente locais - nunca commitar segredos reais
+.env
+.env.local
+.env.*.local
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDEs, caso o monorepo seja aberto direto na raiz
+.vscode/
+.idea/
+*.iml
+
+# Diversos
+*.log
