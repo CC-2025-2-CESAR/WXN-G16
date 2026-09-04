@@ -1,12 +1,13 @@
 name: Deploy backend to Azure
 
 # Builda o backend (precisa de JDK 21, por isso roda aqui e não localmente)
-# e publica no Azure App Service (wxn-g16-backend) a cada push que mexe em
-# backend/. Ver docs/deploy.md para o resto do ambiente (Static Web Apps,
-# Neon).
+# e publica no Azure App Service (wxn-g16-backend) a cada push em main que
+# mexe em backend/ — produção só reflete a main, nunca a develop, seguindo
+# o fluxo de branches do README. Ver docs/deploy.md para o resto do
+# ambiente (Static Web Apps, Neon).
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     paths:
       - "backend/**"
       - ".github/workflows/deploy-backend.yml"
