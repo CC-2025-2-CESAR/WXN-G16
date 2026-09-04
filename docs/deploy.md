@@ -1,14 +1,20 @@
-# Ambiente de nuvem / deploy — pesquisa e recomendação
+# Ambiente de nuvem / deploy — pesquisa, recomendação e status
 
-> **Status:** nada foi implantado ainda. Isto é uma recomendação para o
-> grupo decidir e executar juntos — deploy é uma ação que expõe o projeto
-> publicamente e cria contas em serviços de terceiros, então não foi feito
-> automaticamente.
+> **Status: implantado em 03/09/2026.** URLs de produção:
+> - Frontend: <https://happy-desert-0e6abd410.5.azurestaticapps.net>
+> - Backend: <https://wxn-g16-backend.azurewebsites.net/api/health>
 >
-> Pesquisado em **31/08/2026** (revisado no mesmo dia para trocar a
-> recomendação de compute para Azure). Planos gratuitos mudam com
-> frequência — revalide na documentação oficial antes de criar as contas,
-> principalmente se isso acontecer bem depois desta data.
+> Recursos criados na assinatura Azure for Students (grupo de recursos
+> `rg-wxn-chatbot`, região `Brazil South` para o backend — a assinatura do
+> grupo está restrita a `centralus`, `mexicocentral`, `brazilsouth`,
+> `chilecentral`, `canadacentral` por política; o frontend ficou em
+> `centralus` porque Static Web Apps não está disponível nas demais). Banco
+> em um projeto Neon separado (fora do Azure — ver justificativa abaixo).
+>
+> Pesquisado em **31/08/2026**, implantado em **03/09/2026**. Planos
+> gratuitos mudam com frequência — revalide na documentação oficial antes
+> de recriar/alterar os recursos, principalmente se isso acontecer bem
+> depois desta data.
 
 ## O que precisamos hospedar
 
@@ -26,7 +32,7 @@ saldo de créditos):
 
 | Componente | Serviço | Plano | Consome crédito? |
 |---|---|---|---|
-| Backend (Spring Boot) | [Azure App Service](https://learn.microsoft.com/en-us/azure/app-service/overview-hosting-plans) (Linux, pilha Java) | **F1 – Free** | Não. US$ 0/mês, sempre. |
+| Backend (Spring Boot) | [Azure App Service](https://learn.microsoft.com/en-us/azure/app-service/overview-hosting-plans) (Windows, pilha Java) | **F1 – Free** | Não. US$ 0/mês, sempre. |
 | Frontend (estático) | [Azure Static Web Apps](https://azure.microsoft.com/en-us/pricing/details/app-service/static/) | **Free** | Não. US$ 0/mês, sempre. |
 | Banco de dados | [Neon](https://neon.com/) (PostgreSQL gerenciado, fora do Azure) | Free | Não é Azure — US$ 0, sem prazo de expiração. |
 
@@ -55,15 +61,25 @@ O Neon exige SSL, então o `DB_URL` de produção precisa terminar com
 `?sslmode=require`, diferente do banco local (que não usa SSL) — ex.:
 `jdbc:postgresql://<host>.neon.tech/wxn_chatbot?sslmode=require`.
 
+### Por que Windows, e não Linux, no App Service
+
+O plano original era Linux (mais comum para Java). Na hora de criar o
+recurso de verdade, `az webapp list-runtimes --os-type linux --runtime
+java` mostrou que a pilha Java **built-in do App Service Linux vai só até a
+versão 11** hoje — não tem 17 nem 21. Como o projeto (Spring Boot 4.1)
+exige Java 17+, isso inviabilizava Linux sem usar um container Docker
+(que o grupo decidiu não usar nesta etapa). A mesma checagem no Windows
+(`--os-type windows`) mostrou Java 21 e até 25 como pilhas ativas — por
+isso o backend foi criado como **App Service Windows**, runtime `JAVA:21`.
+O JVM usado é sempre 64-bit (a limitação de 32-bit do F1 é de um modelo
+ainda mais antigo, não se aplica aqui) — [Microsoft Learn – Java on App Service](https://learn.microsoft.com/en-us/azure/app-service/configure-language-java-deploy-run).
+
 ### Limites do plano Free do Azure a ter em mente
 
 - **App Service F1 (backend):** 60 minutos de CPU **por dia** (compartilhado
   entre todos os apps Free do mesmo grupo/região na assinatura), 1 GB de
   RAM, 1 GB de armazenamento, sem "Always On" (o processo pode ficar ocioso
   e o próximo request "esquenta" de novo) — [Microsoft Learn – App Service plans](https://learn.microsoft.com/en-us/azure/app-service/overview-hosting-plans).
-  O JVM usado é sempre 64-bit (Java 21 roda normalmente; a antiga limitação
-  de 32-bit do F1 é do modelo Windows legado, não se aplica ao App Service
-  Linux usado aqui) — [Microsoft Learn – Java on App Service](https://learn.microsoft.com/en-us/azure/app-service/configure-language-java-deploy-run).
   **Se os 60 minutos de CPU do dia acabarem, o Azure para o app até meia-noite
   UTC** (as requisições respondem HTTP 403 "Quota exceeded" nesse meio
   tempo) — isso é bem improvável no uso normal do grupo (abrir o dashboard
@@ -93,30 +109,49 @@ vivo, do mesmo jeito que já valeria com Render.
 - **Azure Database for PostgreSQL** (em vez do Neon). Descartado — ver
   seção acima; é cobrado por hora, não tem tier free.
 
-## O que falta decidir antes de deployar de verdade
+## Como foi feito (registro do deploy real, 03/09/2026)
 
-1. Confirmar com a WXN se há alguma exigência de hospedagem (ex.: dados não
-   podem sair do Brasil, precisa ser em nuvem específica etc.) — nada disso
-   apareceu nos documentos levantados até agora.
-2. Ativar o **Azure for Students** com o e-mail acadêmico de quem for
-   administrar a assinatura (ou verificar via GitHub Student Developer
-   Pack) e criar o projeto no **Neon** com um e-mail do grupo — para o
-   acesso não ficar preso a uma única pessoa.
-3. Depois que o grupo aprovar esta recomendação, o deploy em si é:
-   - Neon: criar um projeto → copiar a connection string → usar como
-     `DB_URL`/`DB_USER`/`DB_PASSWORD` (lembrando do `?sslmode=require`
-     mencionado acima).
-   - Azure App Service: criar um "Web App" Linux, pilha **Java 21 (SE)**,
-     tier **F1**; configurar `DB_URL`/`DB_USER`/`DB_PASSWORD`/
-     `CORS_ALLOWED_ORIGINS` em Configuration → Application settings; fazer
-     deploy do jar com o [Maven Plugin for Azure Web Apps](https://learn.microsoft.com/en-us/azure/developer/java/spring-framework/deploy-spring-boot-java-app-on-linux)
-     (`mvn azure-webapp:deploy`, configurado em `backend/pom.xml` quando o
-     grupo decidir seguir com o deploy) ou pelo botão de deploy do próprio
-     portal.
-   - Azure Static Web Apps: criar apontando para o repositório GitHub,
-     pasta `frontend/`, build command `npm run build`, output location
-     `dist`; configurar `VITE_API_URL` com a URL pública do App Service.
-     O Static Web Apps configura CI/CD via GitHub Actions automaticamente.
+Recursos criados via Azure CLI (`az`), na assinatura Azure for Students já
+logada, dentro do grupo de recursos `rg-wxn-chatbot`:
 
-Nenhuma dessas contas foi criada — isso fica para o grupo decidir e executar
-com calma, fora do escopo desta entrega.
+1. **Resource group** `rg-wxn-chatbot` em `brazilsouth`.
+2. **App Service Plan** `plan-wxn-chatbot` — Windows, SKU `F1`, `brazilsouth`.
+3. **Web App** `wxn-g16-backend` — runtime `JAVA:21`. App settings
+   configuradas (`DB_URL`, `DB_USER`, `DB_PASSWORD` apontando para o
+   projeto Neon do grupo, `CORS_ALLOWED_ORIGINS` apontando para a URL do
+   Static Web App). Como o build precisa de JDK 21 (a máquina usada não
+   tinha) e o Azure App Service Linux não oferecia Java 17/21 de verdade,
+   o build+deploy roda por **GitHub Actions** —
+   [`.github/workflows/deploy-backend.yml`](../.github/workflows/deploy-backend.yml) —
+   a cada push em `backend/`, usando o publish profile do Web App guardado
+   como secret do repositório (`AZURE_WEBAPP_PUBLISH_PROFILE`), nunca
+   commitado. **Pegadinha encontrada:** Web Apps novos vêm com as
+   credenciais de publish (SCM Basic Auth) desabilitadas por padrão — foi
+   preciso habilitar (`basicPublishingCredentialsPolicies/scm`) antes do
+   primeiro deploy funcionar.
+4. **Static Web App** `wxn-g16-frontend` — `centralus` (única região do
+   Static Web Apps permitida pela política de região da assinatura, que
+   restringe a `centralus`, `mexicocentral`, `brazilsouth`, `chilecentral`,
+   `canadacentral`). Build feito localmente (`npm run build`, com
+   `VITE_API_URL` apontando para a URL do backend) e publicado com o
+   [Azure Static Web Apps CLI](https://github.com/Azure/static-web-apps-cli)
+   via token de deployment — não foi conectado ao GitHub Actions ainda
+   (fica como próximo passo, se o grupo quiser deploy automático do
+   frontend também a cada push).
+5. **Neon**: projeto `WXN` criado pelo grupo (fora do Azure), connection
+   string usada diretamente nas app settings do backend.
+
+Verificado depois do deploy: `GET /api/health` no backend responde
+`{"status":"ok"}`, e o frontend mostra "Backend conectado" — ver as URLs no
+topo deste documento.
+
+### Pendências conhecidas para depois desta entrega
+
+- Confirmar com a WXN se há alguma exigência de hospedagem (dados não saírem
+  do Brasil, nuvem específica etc.) — nada disso apareceu nos documentos
+  levantados até agora, e o backend ficou no Brasil (`brazilsouth`); o
+  frontend e o banco (Neon, `us-east-2`) não.
+- Automatizar o deploy do frontend também via GitHub Actions (hoje é manual).
+- Trocar o e-mail/conta usada para o Neon e para o Azure por algo do grupo,
+  se o projeto crescer além desta entrega, para o acesso não ficar preso a
+  uma única pessoa.
