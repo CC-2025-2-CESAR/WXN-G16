@@ -239,13 +239,18 @@ pronto para ser uma versão estável (ex.: antes de uma entrega).
 
 ## Deploy
 
-Ainda **não foi feito** nenhum deploy. Há uma pesquisa e recomendação
-completa em [`docs/deploy.md`](docs/deploy.md): **Azure App Service (F1,
-free) + Azure Static Web Apps (free)** para backend e frontend — planos que
-não consomem os créditos do Azure for Students do grupo — combinados com
-**Neon** (PostgreSQL gerenciado, plano free sem prazo de expiração, fora do
-Azure porque o Postgres do Azure não tem tier gratuito). Fontes e limites de
-cada plano verificados em 31/08/2026.
+**No ar** desde 03/09/2026 — **Azure App Service (F1, free)** para o
+backend, **Azure Static Web Apps (free)** para o frontend (planos que não
+consomem os créditos do Azure for Students do grupo), e **Neon** para o
+PostgreSQL (plano free sem prazo de expiração, fora do Azure porque o
+Postgres do Azure não tem tier gratuito):
+
+- Frontend: <https://happy-desert-0e6abd410.5.azurestaticapps.net>
+- Backend: <https://wxn-g16-backend.azurewebsites.net/api/health>
+
+O backend builda e publica automaticamente via GitHub Actions a cada push
+em `backend/` ([`.github/workflows/deploy-backend.yml`](.github/workflows/deploy-backend.yml)).
+Detalhes, decisões e como reproduzir em [`docs/deploy.md`](docs/deploy.md).
 
 ## Próximos passos
 

@@ -99,16 +99,16 @@ de instalação e execução está no `README.md` do repositório.
 
 ## Ambiente de nuvem
 
-Nenhum deploy foi realizado nesta etapa. Foi feita uma pesquisa (documentada
-em `docs/deploy.md`, com data e fontes) sobre onde hospedar o projeto quando
-o grupo decidir publicá-lo, considerando exigências como suporte a
-Java/Spring Boot, PostgreSQL, variáveis de ambiente e custo compatível com um
-projeto universitário — e, especificamente, em não consumir os créditos do
-Azure for Students que o grupo já possui. A recomendação resultante é
-**Azure App Service e Azure Static Web Apps, nos planos gratuitos (F1 e
-Free)**, combinados com **Neon** para o PostgreSQL: o Azure não oferece
-banco relacional gerenciado gratuito, então mantê-lo fora do Azure é o que
-permite hospedar o projeto inteiro sem custo algum.
+O deploy foi realizado nesta etapa (03/09/2026), depois de uma pesquisa
+(documentada em `docs/deploy.md`, com data e fontes) sobre onde hospedar o
+projeto, considerando suporte a Java/Spring Boot, PostgreSQL, variáveis de
+ambiente e custo compatível com um projeto universitário — e,
+especificamente, em não consumir os créditos do Azure for Students que o
+grupo já possui. A solução usada é **Azure App Service e Azure Static Web
+Apps, nos planos gratuitos (F1 e Free)**, combinados com **Neon** para o
+PostgreSQL: o Azure não oferece banco relacional gerenciado gratuito, então
+mantê-lo fora do Azure é o que permite hospedar o projeto inteiro sem custo
+algum. URLs e detalhes de como foi feito estão em `docs/deploy.md`.
 
 ## Justificativa geral das escolhas
 
