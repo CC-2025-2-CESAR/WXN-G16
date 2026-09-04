@@ -1,0 +1,37 @@
+name: Deploy backend to Azure
+
+# Builda o backend (precisa de JDK 21, por isso roda aqui e não localmente)
+# e publica no Azure App Service (wxn-g16-backend) a cada push que mexe em
+# backend/. Ver docs/deploy.md para o resto do ambiente (Static Web Apps,
+# Neon).
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build (sem testes — precisam do Postgres rodando)
+        run: ./mvnw clean package -DskipTests
+
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: wxn-g16-backend
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: backend/target/*.jar
