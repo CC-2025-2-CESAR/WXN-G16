@@ -93,10 +93,15 @@ e/ou **Eclipse** — os dois funcionam sem ajuste nenhum:
 - **VS Code:** abra a pasta raiz do repositório. Para o backend, instale a
   extensão *Extension Pack for Java* (inclui suporte a Maven); para o
   frontend, as extensões padrão de TypeScript/ES já bastam.
-- **Eclipse (ou Spring Tool Suite):** `File → Import… → Maven → Existing
-  Maven Projects`, apontando para a pasta `backend/` (o `pom.xml` é
-  reconhecido automaticamente via m2e). O frontend não é aberto no Eclipse —
-  use VS Code (ou outro editor de sua preferência) para a pasta `frontend/`.
+- **Eclipse:** se for usar Eclipse pro backend, use o **Spring Tool Suite
+  (STS)** — é o Eclipse com suporte a Spring Boot já embutido (Spring Boot
+  Dashboard, wizards, etc.), recomendação do professor pra evitar conflito
+  de configuração entre quem usa VS Code e quem usa Eclipse no mesmo
+  projeto. Baixe em [spring.io/tools](https://spring.io/tools), depois
+  `File → Import… → Maven → Existing Maven Projects`, apontando para a
+  pasta `backend/` (o `pom.xml` é reconhecido automaticamente via m2e). O
+  frontend não é aberto no Eclipse/STS — use VS Code (ou outro editor de
+  sua preferência) para a pasta `frontend/`.
 
 ## Configuração do banco
 
@@ -199,7 +204,9 @@ WXN-G16/
 ├── docs/
 │   ├── modelagem-inicial.md  Entidades futuras (Company, User, Conversation…)
 │   ├── deploy.md              Pesquisa de hospedagem (Azure Free + Neon)
-│   └── entrega-semana-05.md   Texto da entrega acadêmica desta semana
+│   ├── entrega-semana-05.md   Texto da entrega acadêmica da Semana 05
+│   └── escopo-chatbot.md      Canal (WhatsApp), acesso a dados do cliente,
+│                               glossário técnico e priorização (MoSCoW)
 ├── .env.example
 ├── .gitignore
 └── README.md
