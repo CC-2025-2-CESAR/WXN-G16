@@ -9,10 +9,12 @@
 
 ## ⚠️ Mais urgente que qualquer coisa neste documento
 
-**A Semana 08 vence amanhã, 24/09/2026**, e o conteúdo dela ainda não foi
-conferido no Classroom. A regra da disciplina é explícita: entrega semanal
-fora do prazo vale **zero**, mesmo se enviada depois. Antes de ler o resto
-deste documento, confirme o que a Semana 08 pede.
+**A Semana 08 vence amanhã, 24/09/2026, e ela É o SR1** — o Classroom
+confirma: "as entregas da semana 08 se referem ao Status Report 1, e devem
+ser postadas na Atividade SR01". Não é uma entrega separada a descobrir; é
+a apresentação de 5-7 min (Design + CC) descrita no guia oficial do SR1 —
+ver o que falta preparar na seção 8. A regra da disciplina é explícita:
+entrega fora do prazo vale **zero**, mesmo se enviada depois.
 
 Segundo maior risco estrutural, que também não pode esperar: a disciplina
 diz que **só projetos aprovados pelos orientadores seguem para a próxima
@@ -34,7 +36,9 @@ só uma nota baixa.
   dados via API REST ou manual/RAG, "catálogo MCP", pedir 4 perguntas
   frequentes à WXN) e feedback do professor de POO sobre o banco de dados
   (ver seção 3).
-- **Semana 08** — prazo **24/09/2026 (amanhã)**, conteúdo a confirmar.
+- **Semana 08 = SR1** — prazo **24/09/2026 (amanhã)**. É a apresentação de
+  Descoberta (5-7 min, Design + CC), não uma entrega separada. Ver seção 8
+  para o que falta preparar.
 - **Fórmulas de nota que definem prioridade** (2º/3º período): nota do
   grupo no SR1 = Nota de Processo; no SR2 = (Processo×4 + CC×3 + Design×3)/10.
   Nota individual no SR1 = (Processo×7 + FaCT×3)/10; no SR2 =
@@ -110,7 +114,7 @@ Cost Management do Azure 24–48h depois de criar um).
 
 | # | Risco | Por quê importa | Evidência |
 |---|---|---|---|
-| 1 | **Semana 08 vence amanhã (24/09) com conteúdo ainda não conferido** | Entrega fora do prazo vale ZERO, mesmo se enviada depois. | Regra da disciplina. |
+| 1 | **SR1 é amanhã (24/09) e os slides ainda não estão prontos** | Apresentação de 5-7 min (Design + CC), câmeras abertas, FaCT de cada integrante até 23:59 do dia. Entrega fora do prazo vale ZERO. | Guia oficial do SR1. |
 | 2 | **Gate de aprovação dos orientadores** | "Só projetos com potencial de entregas reais são autorizados" a seguir para a fase seguinte — risco estrutural, não só de nota. | Regra da disciplina (estrutura do semestre). |
 | 3 | **Nenhuma funcionalidade do chatbot existe ainda** (0 entidades, 0 endpoints de negócio) | O PoC do SR2 exige "elementos funcionais de backend para 3 histórias do usuário". Hoje só existe um health check. | `docs/modelagem-inicial.md` confirma que nada da lista está implementado. |
 | 4 | **Só 1 pessoa (Arthur) commitou até hoje**, apesar de ~8 integrantes | A nota individual do SR2 tem peso 4 em "Técnica"; sem commits próprios, o resto do grupo fica sem evidência individual. | 9 commits, todos de Arthur Reis; sem issues, sem board. |
@@ -393,7 +397,7 @@ lint && npm run build` no frontend. Só depois disso remover o
 
 | Quando (estimado) | Foco |
 |---|---|
-| **Amanhã, 24/09 (Semana 08)** | **Prioridade máxima**: confirmar o conteúdo da Semana 08 hoje. Em paralelo, começar entidades/migrations base (não depende do conteúdo da semana). |
+| **Amanhã, 24/09 (SR1)** | **Prioridade máxima**: deck do SR1 pronto e ensaiado (5-7 min, câmeras abertas, FaCT de cada integrante até 23:59). Em paralelo, começar entidades/migrations base do PoC. |
 | ~01/10 | Entidades JPA + migrations V1–V3 prontas; `ChatSimulatorController` + `ConversationOrchestrator` funcionando de ponta a ponta para US 1.1; CI com Testcontainers no ar. |
 | ~08/10 | US 1.4: `UrgencyClassifier`, `HandoffService`, fila de handoff; telas de Design (simulador de chat + fila) em média fidelidade. |
 | ~15/10 | US 3.1: contrato OpenAPI mockado, adaptador `DemandaGateway`, tool calling, confirmação antes de alterar dados. |
@@ -433,8 +437,9 @@ Tool Suite (STS)**, conforme orientação dos professores.
 
 ## 8. Próximos passos desta semana (checklist)
 
-- [ ] **Hoje/amanhã**: conferir no Classroom o conteúdo da Semana 08 (prazo 24/09 — vale zero se atrasar).
-- [ ] Confirmar presença na orientação desta semana.
+- [ ] **Hoje/amanhã**: terminar e ensaiar o deck do SR1 (5-7 min, Design + CC — em andamento no Figma). Prazo 24/09, vale zero se atrasar.
+- [ ] Cada integrante envia o próprio FaCT até 23:59 do dia do SR1.
+- [ ] Confirmar presença na orientação desta semana, câmeras abertas na apresentação.
 - [ ] Preparar a declaração semanal de uso de IA para os orientadores.
 - [ ] Confirmar o que o FaCT exige e planejar a entrega individual de cada integrante no dia do SR.
 - [ ] Transformar as 9 user stories da Entrega 6 em issues do GitHub, com labels por épico, e criar um board.
@@ -457,9 +462,8 @@ Tool Suite (STS)**, conforme orientação dos professores.
 
 ### Para o professor
 1. A pergunta objetiva sobre o banco de dados (texto pronto na seção 3).
-2. Conteúdo exato da Semana 08 (prazo amanhã, 24/09).
-3. Datas exatas do SR1 e do SR2 deste semestre.
-4. Se um PoC com classificação **determinística** (sem LLM real na tomada
+2. Data exata do SR2 (o SR1 já está confirmado: amanhã, 24/09).
+3. Se um PoC com classificação **determinística** (sem LLM real na tomada
    de decisão) atende ao que ele espera de "guardrails, RAG, tool calling"
    — ou se ele espera ver RAG/MCP funcionando de fato já nesta fase. Vale
    também levar essa dúvida a Raoni Monteiro (arquitetura com IA/LLM) e
