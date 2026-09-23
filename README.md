@@ -205,8 +205,10 @@ WXN-G16/
 │   ├── modelagem-inicial.md  Entidades futuras (Company, User, Conversation…)
 │   ├── deploy.md              Pesquisa de hospedagem (Azure Free + Neon)
 │   ├── entrega-semana-05.md   Texto da entrega acadêmica da Semana 05
-│   └── escopo-chatbot.md      Canal (WhatsApp), acesso a dados do cliente,
-│                               glossário técnico e priorização (MoSCoW)
+│   ├── escopo-chatbot.md      Canal (WhatsApp), acesso a dados do cliente,
+│   │                           glossário técnico e priorização (MoSCoW)
+│   └── status-e-roadmap.md    Diagnóstico do projeto, riscos, escopo do
+│                               PoC do SR2 e roadmap até lá
 ├── .env.example
 ├── .gitignore
 └── README.md
