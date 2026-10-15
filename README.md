@@ -192,7 +192,9 @@ WXN-G16/
 │   ├── src/main/java/br/com/wxnchatbot/backend/
 │   │   ├── config/          CorsConfig
 │   │   ├── controller/      HealthController (GET /api/health)
+│   │   ├── model/           Entidades de domínio em POO (Conversa, Mensagem…)
 │   │   └── BackendApplication.java
+│   ├── src/test/java/…/model/   Testes unitários do domínio (JUnit)
 │   └── src/main/resources/application.properties
 ├── frontend/                 React + TypeScript (Vite)
 │   └── src/
@@ -203,8 +205,10 @@ WXN-G16/
 │       └── types/             HealthResponse
 ├── docs/
 │   ├── modelagem-inicial.md  Entidades futuras (Company, User, Conversation…)
+│   ├── modelo-de-classes.md  Diagrama de classes e decisões de POO (Semana 11)
 │   ├── deploy.md              Pesquisa de hospedagem (Azure Free + Neon)
 │   ├── entrega-semana-05.md   Texto da entrega acadêmica da Semana 05
+│   ├── entrega-semana-11.md   Texto da entrega acadêmica da Semana 11
 │   ├── escopo-chatbot.md      Canal (WhatsApp), acesso a dados do cliente,
 │   │                           glossário técnico e priorização (MoSCoW)
 │   └── status-e-roadmap.md    Diagnóstico do projeto, riscos, escopo do
@@ -215,9 +219,9 @@ WXN-G16/
 ```
 
 Só foram criadas as pastas com conteúdo real — `service/`, `repository/`,
-`model/`, `dto/`, `exception/` no backend, por exemplo, ainda não existem
-porque não há nada para colocar nelas ainda (ver `docs/modelagem-inicial.md`
-sobre por quê).
+`dto/`, `exception/` no backend, por exemplo, ainda não existem porque não há
+nada para colocar nelas ainda. O pacote `model/` guarda só as classes de
+domínio (sem JPA nem banco); ver [`docs/modelo-de-classes.md`](docs/modelo-de-classes.md).
 
 ## Git workflow
 
@@ -265,9 +269,11 @@ Detalhes, decisões e como reproduzir em [`docs/deploy.md`](docs/deploy.md).
 
 Planejado para as próximas semanas, nesta ordem aproximada:
 
-1. **Modelagem de dados** — implementar as entidades descritas em
-   `docs/modelagem-inicial.md` (`Company`, `User`, `Conversation`,
-   `Message`, `Agent`, `Handoff`) assim que forem validadas com a WXN.
+1. **Persistência** — as classes de domínio já existem (`Cliente`,
+   `Atendente`, `Conversa`, `Mensagem`, `Chatbot`, `Ticket`; ver
+   `docs/modelo-de-classes.md`). Falta mapeá-las para o banco (JPA, migrations)
+   e decidir o que mais entra do `docs/modelagem-inicial.md` (`Company`,
+   `Handoff`) depois da validação com a WXN.
 2. **Autenticação** — ainda não implementada.
 3. **Dashboard real** — fila de conversas, histórico, indicadores (ver o
    levantamento preliminar de funcionalidades do grupo).
