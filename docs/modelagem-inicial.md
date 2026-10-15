@@ -1,11 +1,14 @@
 # Modelagem inicial de dados (planejamento, não implementado)
 
-> **Status:** nada disto existe como código ainda — nenhuma entidade JPA foi
-> criada no backend. Este documento existe só para registrar o raciocínio
-> por trás da estrutura de pastas e decisões futuras, conforme pedido na
-> atividade da Semana 05 ("pense desde já em uma arquitetura que possa
-> futuramente possuir..."). Vira código nas próximas semanas, à medida que
-> as funcionalidades do dashboard forem validadas com a WXN.
+> **Status:** este é o planejamento conceitual da Semana 05, e nenhuma
+> entidade **JPA** foi criada no backend ainda. As classes de domínio em POO
+> (sem banco) foram implementadas na Semana 11 e estão descritas em
+> [`modelo-de-classes.md`](modelo-de-classes.md); lá, `User`, `Conversation`,
+> `Message` e `Agent` aparecem como `Cliente`, `Conversa`, `Mensagem` e
+> `Atendente`, e o `Handoff` virou o `Ticket`. `Company` ficou de fora.
+> Este documento continua valendo como registro do raciocínio por trás da
+> estrutura de pastas e das decisões futuras (atividade da Semana 05:
+> "pense desde já em uma arquitetura que possa futuramente possuir...").
 
 ## Entidades previstas
 
