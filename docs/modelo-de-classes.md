@@ -16,6 +16,57 @@ implementadas (ver [`modelagem-inicial.md`](modelagem-inicial.md)).
 classDiagram
     direction LR
 
+    class ConversaRepositorio {
+        <<interface>>
+        +buscarFilaAguardando() List~Conversa~
+        +buscarPorIdParaAtualizar(UUID id) Optional~Conversa~
+    }
+
+    class AtendenteRepositorio {
+        <<interface>>
+    }
+
+    class FilaConversasServico {
+        +visualizarFila() List~ConversaNaFila~
+        +abrirConversaDaFila(UUID conversaId) DetalheConversaFila
+        +solicitarAtendente(UUID conversaId, String motivo) ConversaNaFila
+        +atribuirAtendente(UUID conversaId, UUID atendenteId) void
+        +encerrar(UUID conversaId) void
+    }
+
+    class ConversaNaFila {
+        <<record>>
+        int posicao
+        UUID conversaId
+        String clienteNome
+        String clienteTelefone
+        String motivo
+        Instant abertoEm
+    }
+
+    class DetalheConversaFila {
+        <<record>>
+        UUID conversaId
+        String clienteNome
+        String clienteTelefone
+        String motivo
+        Instant abertoEm
+        List~MensagemResumo~ mensagens
+    }
+
+    class MensagemResumo {
+        <<record>>
+        TipoRemetente tipoRemetente
+        String conteudo
+        Instant enviadaEm
+    }
+
+    class RecursoNaoEncontradoException {
+        <<exception>>
+    }
+
+
+
     class Remetente {
         <<interface>>
         +getId() UUID
@@ -115,6 +166,15 @@ classDiagram
     Conversa "1" -- "0..1" Ticket : gera
     Ticket "0..*" --> "0..1" Atendente : atendido por
     Mensagem "0..*" --> "1" Remetente : enviada por
+
+    FilaConversasServico ..> ConversaRepositorio : usa
+    FilaConversasServico ..> AtendenteRepositorio : usa
+    FilaConversasServico ..> ConversaNaFila : devolve
+    FilaConversasServico ..> DetalheConversaFila : devolve
+    FilaConversasServico ..> RecursoNaoEncontradoException : lança
+    ConversaRepositorio ..> Conversa : persiste
+    AtendenteRepositorio ..> Atendente : persiste
+    DetalheConversaFila *-- MensagemResumo
 ```
 
 ## Mapeamento com o pedido da atividade

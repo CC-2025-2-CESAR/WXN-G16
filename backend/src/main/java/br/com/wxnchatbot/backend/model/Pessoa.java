@@ -1,11 +1,20 @@
 package br.com.wxnchatbot.backend.model;
 
 import java.util.UUID;
+import jakarta.persistence.Column;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
 
+@MappedSuperclass
 public abstract class Pessoa implements Remetente {
 
-	private final UUID id = UUID.randomUUID();
+	@Id
+	private UUID id = UUID.randomUUID();
+	@Column(name = "nome", nullable = false)
 	private String nome;
+
+	protected Pessoa() {
+   	}
 
 	protected Pessoa(String nome) {
 		this.nome = Validacao.textoObrigatorio(nome, "nome");
