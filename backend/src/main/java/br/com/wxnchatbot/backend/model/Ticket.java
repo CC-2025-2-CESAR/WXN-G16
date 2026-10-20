@@ -5,15 +5,47 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "ticket")
 public class Ticket {
 
-	private final UUID id = UUID.randomUUID();
-	private final Conversa conversa;
-	private final String motivo;
-	private final Instant abertoEm = Instant.now();
+	@Id
+	private UUID id = UUID.randomUUID();
+
+	@OneToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "conversa_id", nullable = false, unique = true)
+	private Conversa conversa;
+
+	@Column(name = "motivo", nullable = false)
+	private String motivo;
+
+	@Column(name = "aberto_em", nullable = false)
+	private Instant abertoEm = Instant.now();
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status", nullable = false)
 	private StatusTicket status = StatusTicket.ABERTO;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "atendente_id")
 	private Atendente atendente;
+
+	@Column(name = "resolvido_em")
 	private Instant resolvidoEm;
+
+	protected Ticket() {
+	}
 
 	Ticket(Conversa conversa, String motivo) {
 		this.conversa = Objects.requireNonNull(conversa, "conversa é obrigatória");

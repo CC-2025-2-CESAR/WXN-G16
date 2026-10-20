@@ -8,17 +8,58 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "conversa")
 public class Conversa {
 
-	private final UUID id = UUID.randomUUID();
-	private final Cliente cliente;
-	private final Chatbot chatbot;
-	private final List<Mensagem> mensagens = new ArrayList<>();
-	private final Instant iniciadaEm = Instant.now();
+	@Id
+	private UUID id = UUID.randomUUID();
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "cliente_id", nullable = false)
+	private Cliente cliente;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "chatbot_id", nullable = false)
+	private Chatbot chatbot;
+
+	@OneToMany(mappedBy = "conversa", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("enviadaEm ASC")
+	private List<Mensagem> mensagens = new ArrayList<>();
+
+	@Column(name = "iniciada_em", nullable = false)
+	private Instant iniciadaEm = Instant.now();
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status", nullable = false)
 	private StatusConversa status = StatusConversa.COM_CHATBOT;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "atendente_id")
 	private Atendente atendente;
+
+	@OneToOne(mappedBy = "conversa", cascade = CascadeType.ALL)
 	private Ticket ticket;
+
+	@Column(name = "encerrada_em")
 	private Instant encerradaEm;
+
+	protected Conversa() {
+	}
 
 	public Conversa(Cliente cliente, Chatbot chatbot) {
 		this.cliente = Objects.requireNonNull(cliente, "cliente é obrigatório");
@@ -36,7 +77,7 @@ public class Conversa {
 		if (!podeEnviar(remetente)) {
 			throw new IllegalStateException(remetente.getNome() + " não pode enviar mensagem nesta conversa agora");
 		}
-		Mensagem mensagem = new Mensagem(remetente, conteudo);
+		Mensagem mensagem = new Mensagem(this, remetente, conteudo);
 		mensagens.add(mensagem);
 		return mensagem;
 	}
@@ -72,6 +113,14 @@ public class Conversa {
 		}
 		this.status = StatusConversa.ENCERRADA;
 		this.encerradaEm = Instant.now();
+	}
+
+	Remetente resolverRemetente(TipoRemetente tipo) {
+		return switch (tipo) {
+			case CLIENTE -> cliente;
+			case CHATBOT -> chatbot;
+			case ATENDENTE -> atendente;
+		};
 	}
 
 	private boolean podeEnviar(Remetente remetente) {

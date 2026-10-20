@@ -1,8 +1,18 @@
 package br.com.wxnchatbot.backend.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "cliente")
 public class Cliente extends Pessoa {
 
+	@Column(name = "telefone", nullable = false)	
 	private String telefone;
+
+	protected Cliente() {
+	}
 
 	public Cliente(String nome, String telefone) {
 		super(nome);
