@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: API de demandas da WXN (contrato simulado)
+  version: 0.1.0
+  description: |
+    Contrato mínimo que a Lily usa para consultar o status de uma demanda e
+    abrir um chamado nos sistemas de um cliente da WXN.
+
+    **Este contrato é uma proposta do grupo.** A WXN ainda não entregou a API
+    real: o formato do protocolo e os status possíveis abaixo precisam ser
+    confirmados com eles. Enquanto isso, o backend expõe uma implementação
+    simulada (perfil `mock`), com dados fictícios. Quando a API real chegar, só
+    a base URL e a autenticação mudam; o `DemandaGateway` continua o mesmo.
+
+    ### Isolamento por empresa
+    Toda chamada leva o cabeçalho `X-Empresa-Id`. Esse valor **vem sempre do
+    contexto controlado pelo backend**, nunca do texto digitado pelo usuário
+    nem de uma decisão da LLM. Uma demanda de uma empresa nunca aparece para
+    outra: consultar o protocolo de outra empresa responde `404`.
+
+    ### Comportamentos de simulação (somente no mock)
+    | Protocolo | Resposta |
+    |---|---|
+    | `WXN-ERRO-500` | `500`, para testar falha da API |
+    | `WXN-LENTO` | responde só depois de alguns segundos, para testar *timeout* |
+servers:
+  - url: http://localhost:8080/mock/wxn
+    description: Mock no próprio backend (perfil `mock`)
+security: []
+paths:
+  /demandas/{protocolo}:
+    get:
+      operationId: consultarDemanda
+      summary: Consulta o status de uma demanda pelo protocolo
+      parameters:
+        - $ref: '#/components/parameters/EmpresaId'
+        - name: protocolo
+          in: path
+          required: true
+          description: >
+            Protocolo da demanda. Letras maiúsculas, dígitos, hífen e
+            sublinhado, de 3 a 40 caracteres. Formato real a confirmar com a WXN.
+          schema:
+            type: string
+            pattern: '^[A-Z0-9][A-Z0-9_-]{2,39}$'
+            example: WXN-2026-0001
+      responses:
+        '200':
+          description: Demanda encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Demanda'
+        '400':
+          description: >
+            Protocolo em formato inválido (`PROTOCOLO_INVALIDO`) ou cabeçalho
+            ausente/malformado (`REQUISICAO_INVALIDA`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: >
+            Nenhuma demanda com esse protocolo para essa empresa
+            (`DEMANDA_NAO_ENCONTRADA`). Um 404 sem esse código não significa
+            "não encontrada", e sim que o serviço não está disponível.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '500':
+          description: Falha interna da API
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /chamados:
+    post:
+      operationId: abrirChamado
+      summary: Abre um chamado
+      description: |
+        Operação que **altera dados**. A Lily só chama este endpoint depois de
+        o cliente confirmar explicitamente o pedido. O cabeçalho
+        `Idempotency-Key` garante que repetir a chamada (por exemplo, depois de
+        um *timeout*) não abre o chamado duas vezes.
+      parameters:
+        - $ref: '#/components/parameters/EmpresaId'
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Chave que identifica esta tentativa de abertura
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NovoChamado'
+      responses:
+        '201':
+          description: Chamado aberto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chamado'
+        '400':
+          description: Corpo ou cabeçalho inválido (`REQUISICAO_INVALIDA`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+components:
+  parameters:
+    EmpresaId:
+      name: X-Empresa-Id
+      in: header
+      required: true
+      description: Empresa cliente da WXN (identificador definido pelo backend)
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    StatusDemanda:
+      type: string
+      description: Status possíveis (proposta, a confirmar com a WXN)
+      enum:
+        - ABERTA
+        - EM_ANDAMENTO
+        - AGUARDANDO_CLIENTE
+        - CONCLUIDA
+        - CANCELADA
+    Demanda:
+      type: object
+      required: [protocolo, titulo, status, atualizadaEm]
+      properties:
+        protocolo:
+          type: string
+          example: WXN-2026-0001
+        titulo:
+          type: string
+          example: Ajuste no relatório de vendas do ERP
+        status:
+          $ref: '#/components/schemas/StatusDemanda'
+        atualizadaEm:
+          type: string
+          format: date-time
+        observacao:
+          type: string
+          nullable: true
+          example: Aguardando validação do time fiscal
+    NovoChamado:
+      type: object
+      required: [titulo, descricao]
+      properties:
+        titulo:
+          type: string
+          minLength: 3
+          maxLength: 120
+          example: Erro ao emitir nota fiscal
+        descricao:
+          type: string
+          maxLength: 1000
+          example: A emissão trava na etapa de assinatura desde ontem.
+    Chamado:
+      type: object
+      required: [protocolo, titulo, status, criadoEm]
+      properties:
+        protocolo:
+          type: string
+          example: WXN-2026-5000
+        titulo:
+          type: string
+        status:
+          $ref: '#/components/schemas/StatusDemanda'
+        criadoEm:
+          type: string
+          format: date-time
+    Erro:
+      type: object
+      required: [codigo, mensagem]
+      properties:
+        codigo:
+          type: string
+          example: DEMANDA_NAO_ENCONTRADA
+        mensagem:
+          type: string

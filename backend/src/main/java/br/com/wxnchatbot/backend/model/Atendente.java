@@ -10,6 +10,7 @@ public class Atendente extends Pessoa {
 
 	@Column(name = "email", nullable = false)
 	private String email;
+
 	@Column(name = "disponivel", nullable = false)
 	private boolean disponivel = true;
 

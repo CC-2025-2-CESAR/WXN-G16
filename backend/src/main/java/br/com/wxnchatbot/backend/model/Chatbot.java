@@ -1,13 +1,29 @@
 package br.com.wxnchatbot.backend.model;
 
 import java.util.UUID;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
+@Entity
+@Table(name = "chatbot")
 public class Chatbot implements Remetente {
 
-	private final UUID id = UUID.randomUUID();
-	private final String nome;
+	@Id
+	private UUID id = UUID.randomUUID();
+
+	@Column(name = "nome", nullable = false)
+	private String nome;
+
+	@Column(name = "mensagem_boas_vindas", nullable = false)
 	private String mensagemBoasVindas;
+
+	@Column(name = "ativo", nullable = false)
 	private boolean ativo = true;
+	
+	protected Chatbot() {
+	}
 
 	public Chatbot(String nome, String mensagemBoasVindas) {
 		this.nome = Validacao.textoObrigatorio(nome, "nome");
