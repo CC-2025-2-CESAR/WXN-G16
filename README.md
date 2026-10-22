@@ -234,6 +234,7 @@ WXN-G16/
 │   │   └── BackendApplication.java
 │   ├── src/test/java/…      Testes (JUnit)
 │   └── src/main/resources/application.properties
+├── experimentos/gemini/     Teste isolado da Gemini (T3.1.4); ver o LEIA-ME da pasta
 ├── frontend/                 React + TypeScript (Vite)
 │   └── src/
 │       ├── components/      StatusBadge
