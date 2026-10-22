@@ -10,11 +10,12 @@ public abstract class Pessoa implements Remetente {
 
 	@Id
 	private UUID id = UUID.randomUUID();
+
 	@Column(name = "nome", nullable = false)
 	private String nome;
 
 	protected Pessoa() {
-   	}
+	}
 
 	protected Pessoa(String nome) {
 		this.nome = Validacao.textoObrigatorio(nome, "nome");

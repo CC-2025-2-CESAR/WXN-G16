@@ -8,7 +8,7 @@ import jakarta.persistence.Table;
 @Table(name = "cliente")
 public class Cliente extends Pessoa {
 
-	@Column(name = "telefone", nullable = false)	
+	@Column(name = "telefone", nullable = false)
 	private String telefone;
 
 	protected Cliente() {
