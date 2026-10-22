@@ -3,11 +3,12 @@
 Fundação técnica do projeto de atendimento automatizado (chatbot / agente de
 IA) para a **WXN Tecnologia** — Projeto 3, Computação, CESAR School.
 
-> **Nesta etapa (Semana 05)** o objetivo foi montar o ambiente de
-> desenvolvimento e de deploy: repositório, backend, frontend e banco de
-> dados conversando entre si. O chatbot em si — regras de negócio, IA, RAG,
-> integração com o ERP da WXN — **ainda não existe** e será construído nas
-> próximas semanas. Veja [Próximos passos](#próximos-passos).
+> **Situação atual (22/10/2026):** o ambiente de desenvolvimento e de deploy
+> está pronto e o backend já tem o modelo de dados, a fila de conversas, o
+> classificador de urgência, o mock da API da WXN e as ferramentas do chatbot.
+> O que ainda **não existe** é o fluxo de conversa de ponta a ponta (endpoint
+> de mensagens e orquestrador), a integração com a LLM e as telas do chat e do
+> dashboard. Veja [Próximos passos](#próximos-passos).
 
 ## Sobre o projeto
 
@@ -39,11 +40,13 @@ flowchart LR
     BE --> DB[(PostgreSQL)]
 ```
 
-O que **já existe** hoje, funcionando de ponta a ponta, é o caminho
-`Dashboard React → REST API → Spring Boot → PostgreSQL` reduzido ao mínimo:
-o frontend chama `GET /api/health`, o backend responde e comprova que está
-de pé e conectado ao banco. Tudo relacionado a IA (retângulos `AI`, `RAG`,
-`TOOLS`, `ERP`, `H` no diagrama) é arquitetura planejada, não código.
+O que **já existe** de ponta a ponta é o caminho `Dashboard React → REST API
+→ Spring Boot → PostgreSQL` reduzido ao mínimo: o frontend chama
+`GET /api/health` e o backend responde. No backend também já existem o modelo
+persistido no PostgreSQL, a fila de conversas, o classificador de urgência e
+as ferramentas do chatbot, que consultam a API da WXN (hoje um mock). Ainda
+são só arquitetura planejada a LLM (`AI`), o `RAG` e as telas do chat e do
+dashboard.
 
 ## Tecnologias
 
@@ -59,9 +62,10 @@ Versões exatas ficam fixadas em `backend/pom.xml` (Spring Boot, via o
 TypeScript) — consulte esses arquivos para os números precisos a qualquer
 momento, em vez de confiar só nesta tabela.
 
-Deliberadamente **fora de escopo nesta etapa**: Docker, Kubernetes,
-microsserviços, Redis/Kafka/RabbitMQ, autenticação, e qualquer parte de IA
-(Spring AI, RAG, MCP, Tool Calling). Ver [Próximos passos](#próximos-passos).
+Fora de escopo por enquanto: Docker, Kubernetes, microsserviços,
+Redis/Kafka/RabbitMQ e autenticação. A parte de IA (Spring AI, RAG, MCP) ainda
+não foi implementada: as ferramentas do chatbot existem, mas nenhuma LLM as
+chama ainda. Ver [Próximos passos](#próximos-passos).
 
 ## Pré-requisitos
 
@@ -122,9 +126,9 @@ e/ou **Eclipse** — os dois funcionam sem ajuste nenhum:
    ```
 
    Se pedir a senha e conectar sem erro, está pronto — pode sair com `\q`.
-   Ainda não existe nenhuma tabela: o schema começa vazio (ver
-   `docs/modelagem-inicial.md`) e é criado automaticamente pelo Hibernate
-   na primeira vez que o backend subir.
+   O banco começa vazio: as tabelas são criadas pelo Hibernate, a partir das
+   entidades JPA, na primeira vez que o backend subir (`ddl-auto=update`).
+   Ainda não há migrations versionadas.
 
 Prefere GUI? O **pgAdmin** faz os mesmos dois passos (criar login role +
 criar database) pela interface gráfica, se preferir não usar o terminal.
@@ -153,6 +157,32 @@ curl http://localhost:8080/api/health
 Se a resposta acima aparecer, o backend está de pé **e** conectado ao banco
 (se a conexão falhasse, o Spring Boot não conseguiria terminar de subir).
 
+### API simulada da WXN
+
+As ferramentas do chatbot consultam a API de demandas da WXN, que ainda não
+existe. Para desenvolver, suba o backend com o perfil `mock`, que expõe uma
+versão simulada, com dados fictícios, em `/mock/wxn`:
+
+```bash
+SPRING_PROFILES_ACTIVE=mock ./mvnw spring-boot:run
+```
+
+No PowerShell: `$env:SPRING_PROFILES_ACTIVE="mock"; ./mvnw spring-boot:run`.
+Dados, protocolos de teste e como usar as ferramentas estão em
+[`docs/integracao-wxn.md`](docs/integracao-wxn.md).
+
+### Testes
+
+```bash
+cd backend
+./mvnw -Dtest='!BackendApplicationTests' -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+Esse comando roda os testes que não precisam de banco. O
+`BackendApplicationTests` sobe o contexto do Spring e exige o PostgreSQL local
+do passo anterior; `./mvnw verify` roda tudo. O CI executa isso em todo pull
+request para `develop` e `main`, com um Postgres de teste.
+
 ## Executando o frontend
 
 Em outro terminal:
@@ -176,6 +206,8 @@ Veja `.env.example` (raiz) e `frontend/.env.example`. Resumo:
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Backend (`application.properties`) | já apontam para o banco local descrito acima — **não precisa configurar nada para rodar localmente** |
 | `SERVER_PORT` | Backend | `8080` |
 | `CORS_ALLOWED_ORIGINS` | Backend | `http://localhost:5173` |
+| `SPRING_PROFILES_ACTIVE` | Backend | vazio; use `mock` para a API simulada da WXN |
+| `WXN_API_BASE_URL` | Backend | `http://localhost:8080/mock/wxn` (o mock do próprio backend) |
 | `VITE_API_URL` | Frontend (`frontend/.env`, se você criar um) | `http://localhost:8080` |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Reservado para etapas futuras | vazio — **não preencher com chave real neste repositório** |
 
@@ -188,16 +220,19 @@ reais na plataforma de deploy (ver `docs/deploy.md`).
 
 ```
 WXN-G16/
+├── .github/workflows/       CI dos pull requests (ci.yml) e deploys (só na main)
 ├── backend/                 Spring Boot (Java 21, Maven)
 │   ├── src/main/java/br/com/wxnchatbot/backend/
 │   │   ├── config/          CorsConfig
 │   │   ├── controller/      HealthController (GET /api/health)
 │   │   ├── ferramenta/      Ferramentas do chatbot (consultar demanda, abrir chamado)
 │   │   ├── integracao/wxn/  Gateway da API da WXN e o mock (perfil `mock`)
-│   │   ├── model/           Entidades de domínio em POO (Conversa, Mensagem…)
+│   │   ├── model/           Entidades JPA do domínio (Conversa, Mensagem…)
 │   │   ├── notificacao/     NotificationGateway (e-mail) e implementação fake
+│   │   ├── repository/      Repositórios Spring Data (Conversa, Atendente)
+│   │   ├── service/         Fila de conversas e classificador de urgência
 │   │   └── BackendApplication.java
-│   ├── src/test/java/…/model/   Testes unitários do domínio (JUnit)
+│   ├── src/test/java/…      Testes (JUnit)
 │   └── src/main/resources/application.properties
 ├── frontend/                 React + TypeScript (Vite)
 │   └── src/
@@ -208,6 +243,7 @@ WXN-G16/
 │       └── types/             HealthResponse
 ├── docs/
 │   ├── api/                   Contratos OpenAPI (wxn-demandas.openapi.yaml)
+│   ├── backlog-implementacao.md  Divisão em 8 vagas, tarefas por sprint e escolha da LLM
 │   ├── integracao-wxn.md      API simulada da WXN, ferramentas do chatbot e e-mail
 │   ├── modelagem-inicial.md  Entidades futuras (Company, User, Conversation…)
 │   ├── modelo-de-classes.md  Diagrama de classes e decisões de POO (Semana 11)
@@ -223,10 +259,9 @@ WXN-G16/
 └── README.md
 ```
 
-Só foram criadas as pastas com conteúdo real — `service/`, `repository/`,
-`dto/`, `exception/` no backend, por exemplo, ainda não existem porque não há
-nada para colocar nelas ainda. O pacote `model/` guarda só as classes de
-domínio (sem JPA nem banco); ver [`docs/modelo-de-classes.md`](docs/modelo-de-classes.md).
+Pastas só são criadas quando têm conteúdo: `dto/` e `exception/`, por
+exemplo, ainda não existem. O pacote `model/` guarda as entidades JPA e as
+regras do domínio; ver [`docs/modelo-de-classes.md`](docs/modelo-de-classes.md).
 
 ## Git workflow
 
@@ -252,6 +287,10 @@ git push -u origin feature/o-que-voce-vai-fazer
 # abrir Pull Request para develop no GitHub
 ```
 
+Ao abrir o Pull Request, escolha **`develop`** como branch de destino (o
+GitHub sugere `main` por padrão). O CI roda nos PRs para `develop` e `main`.
+As histórias e as tarefas ficam no board [WXN Grupo 16](https://github.com/orgs/CC-2025-2-CESAR/projects/3).
+
 `main` só recebe merge de `develop` quando o grupo considerar aquele estado
 pronto para ser uma versão estável (ex.: antes de uma entrega).
 
@@ -266,28 +305,27 @@ Postgres do Azure não tem tier gratuito):
 - Frontend: <https://happy-desert-0e6abd410.5.azurestaticapps.net>
 - Backend: <https://wxn-g16-backend.azurewebsites.net/api/health>
 
-O backend builda e publica automaticamente via GitHub Actions a cada push
-em `backend/` ([`.github/workflows/deploy-backend.yml`](.github/workflows/deploy-backend.yml)).
-Detalhes, decisões e como reproduzir em [`docs/deploy.md`](docs/deploy.md).
+O backend builda e publica automaticamente via GitHub Actions a cada push na
+`main` que altere `backend/`
+([`.github/workflows/deploy-backend.yml`](.github/workflows/deploy-backend.yml));
+o frontend segue a mesma regra para `frontend/`. Detalhes, decisões e como
+reproduzir em [`docs/deploy.md`](docs/deploy.md).
 
 ## Próximos passos
 
-Planejado para as próximas semanas, nesta ordem aproximada:
+O plano completo (tarefas por pessoa, sprints e a escolha da LLM) está em
+[`docs/backlog-implementacao.md`](docs/backlog-implementacao.md). O que falta,
+nesta ordem aproximada:
 
-1. **Persistência** — as classes de domínio já existem (`Cliente`,
-   `Atendente`, `Conversa`, `Mensagem`, `Chatbot`, `Ticket`; ver
-   `docs/modelo-de-classes.md`). Falta mapeá-las para o banco (JPA, migrations)
-   e decidir o que mais entra do `docs/modelagem-inicial.md` (`Company`,
-   `Handoff`) depois da validação com a WXN.
-2. **Autenticação** — ainda não implementada.
-3. **Dashboard real** — fila de conversas, histórico, indicadores (ver o
-   levantamento preliminar de funcionalidades do grupo).
-4. **Chatbot / IA** — Spring AI, Tool Calling, RAG (base de conhecimento),
-   MCP como padronização de ferramentas, e integração com o ERP da WXN
-   (via Swagger/OpenAPI, com mocks de API enquanto o ambiente real não
-   estiver disponível).
-5. **Handoff humano** — transferência de conversas da IA para atendentes.
-6. **Deploy real** — executar o plano descrito em `docs/deploy.md`.
-
-Nada da lista acima está implementado hoje — esta seção existe para deixar
-claro o que vem depois, sem confundir com o que já foi entregue nesta etapa.
+1. **Migrations** — adotar o Flyway e trocar `ddl-auto` para `validate`; criar
+   a `Empresa`, para isolar os dados por empresa.
+2. **Fluxo de conversa** — endpoint de mensagens, histórico persistido e o
+   orquestrador que decide entre consultar a WXN, encaminhar a um humano ou
+   responder.
+3. **LLM** — integração com o Spring AI (a recomendação é o plano gratuito da
+   Gemini, com a Groq de reserva), prompt da Lily e filtros de entrada e saída.
+4. **Frontend** — simulador de chat e dashboard de atendimento (fila de
+   conversas, assumir caso, métricas).
+5. **Autenticação** mínima nas rotas do painel.
+6. **Depois da PoC** — RAG (base de conhecimento), MCP, e-mail de confirmação
+   com SMTP real e o canal real do WhatsApp.
