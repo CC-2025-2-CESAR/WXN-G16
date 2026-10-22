@@ -250,7 +250,6 @@ WXN-G16/
 │   ├── deploy.md              Pesquisa de hospedagem (Azure Free + Neon)
 │   ├── entrega-semana-05.md   Texto da entrega acadêmica da Semana 05
 │   ├── entrega-semana-11.md   Texto da entrega acadêmica da Semana 11
-│   ├── entrega-semana-12.md   Texto da entrega acadêmica da Semana 12 (fila de conversas)
 │   ├── escopo-chatbot.md      Canal (WhatsApp), acesso a dados do cliente,
 │   │                           glossário técnico e priorização (MoSCoW)
 │   └── status-e-roadmap.md    Diagnóstico do projeto, riscos, escopo do
