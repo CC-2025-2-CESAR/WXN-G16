@@ -51,7 +51,7 @@ dashboard.
 ## Tecnologias
 
 | Camada | Tecnologia | Observação |
-| --- | --- | --- |
+|---|---|---|
 | Backend | Java 21 (LTS) + Spring Boot 4.1 + Maven | Gerado a partir do Spring Initializr oficial em 31/08/2026 |
 | Frontend | React 19 + TypeScript + Vite | `npm create vite@latest -- --template react-ts` |
 | Banco de dados | PostgreSQL | Local em dev; [Neon](https://neon.com/) recomendado para a nuvem — ver `docs/deploy.md` |
@@ -202,7 +202,7 @@ contrário — é só isso que esta página faz por enquanto.
 Veja `.env.example` (raiz) e `frontend/.env.example`. Resumo:
 
 | Variável | Onde é usada | Default em dev |
-| --- | --- | --- |
+|---|---|---|
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Backend (`application.properties`) | já apontam para o banco local descrito acima — **não precisa configurar nada para rodar localmente** |
 | `SERVER_PORT` | Backend | `8080` |
 | `CORS_ALLOWED_ORIGINS` | Backend | `http://localhost:5173` |
@@ -318,14 +318,14 @@ O plano completo (tarefas por pessoa, sprints e a escolha da LLM) está em
 nesta ordem aproximada:
 
 1. **Migrations** — adotar o Flyway e trocar `ddl-auto` para `validate`; criar
-   a `Empresa`, para isolar os dados por empresa
+   a `Empresa`, para isolar os dados por empresa.
 2. **Fluxo de conversa** — endpoint de mensagens, histórico persistido e o
    orquestrador que decide entre consultar a WXN, encaminhar a um humano ou
-   responder;
+   responder.
 3. **LLM** — integração com o Spring AI (a recomendação é o plano gratuito da
    Gemini, com a Groq de reserva), prompt da Lily e filtros de entrada e saída.
 4. **Frontend** — simulador de chat e dashboard de atendimento (fila de
-   conversas, assumir caso, métricas);
-5. **Autenticação** mínima nas rotas do painel;
+   conversas, assumir caso, métricas).
+5. **Autenticação** mínima nas rotas do painel.
 6. **Depois da PoC** — RAG (base de conhecimento), MCP, e-mail de confirmação
    com SMTP real e o canal real do WhatsApp.
