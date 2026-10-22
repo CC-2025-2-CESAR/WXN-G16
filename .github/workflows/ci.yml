@@ -1,0 +1,83 @@
+name: CI
+
+# Serve pra validar Pull Request para as branchs develop e main.
+# Testes do backend com Postgres, lint, typecheck e build do frontend.
+# Os Workflows de deploy só rodam depois do merge na main e pulam os testes,
+# então esté é o único lugar onde são executados
+on:
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (testes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: wxn_user
+          POSTGRES_PASSWORD: wxn_password
+          POSTGRES_DB: wxn_chatbot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wxn_user -d wxn_chatbot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Testes
+        run: ./mvnw -B verify
+
+      - name: Relatórios de teste
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports
+          retention-days: 7
+
+  frontend:
+    name: Frontend (lint, tipos e build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos e build
+        run: npm run build
