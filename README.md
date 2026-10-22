@@ -192,7 +192,10 @@ WXN-G16/
 │   ├── src/main/java/br/com/wxnchatbot/backend/
 │   │   ├── config/          CorsConfig
 │   │   ├── controller/      HealthController (GET /api/health)
+│   │   ├── ferramenta/      Ferramentas do chatbot (consultar demanda, abrir chamado)
+│   │   ├── integracao/wxn/  Gateway da API da WXN e o mock (perfil `mock`)
 │   │   ├── model/           Entidades de domínio em POO (Conversa, Mensagem…)
+│   │   ├── notificacao/     NotificationGateway (e-mail) e implementação fake
 │   │   └── BackendApplication.java
 │   ├── src/test/java/…/model/   Testes unitários do domínio (JUnit)
 │   └── src/main/resources/application.properties
@@ -204,6 +207,8 @@ WXN-G16/
 │       ├── hooks/             useBackendHealth
 │       └── types/             HealthResponse
 ├── docs/
+│   ├── api/                   Contratos OpenAPI (wxn-demandas.openapi.yaml)
+│   ├── integracao-wxn.md      API simulada da WXN, ferramentas do chatbot e e-mail
 │   ├── modelagem-inicial.md  Entidades futuras (Company, User, Conversation…)
 │   ├── modelo-de-classes.md  Diagrama de classes e decisões de POO (Semana 11)
 │   ├── deploy.md              Pesquisa de hospedagem (Azure Free + Neon)
