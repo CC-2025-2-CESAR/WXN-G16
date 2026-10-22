@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-// Quando existir a implementação real (SMTP), marque esta classe com @Profile("!prod").
 @Component
 public class NotificationGatewayFake implements NotificationGateway {
 

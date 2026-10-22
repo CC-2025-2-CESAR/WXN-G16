@@ -26,8 +26,6 @@ info:
 servers:
   - url: http://localhost:8080/mock/wxn
     description: Mock no próprio backend (perfil `mock`)
-# O mock não exige autenticação. A API real da WXN terá uma (chave ou token por
-# cliente), a definir com eles; ela entra aqui quando o contrato real chegar.
 security: []
 paths:
   /demandas/{protocolo}:

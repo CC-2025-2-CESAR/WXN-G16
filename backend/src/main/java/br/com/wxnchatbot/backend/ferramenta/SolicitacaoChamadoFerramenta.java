@@ -7,8 +7,7 @@ import org.springframework.stereotype.Service;
 
 import br.com.wxnchatbot.backend.integracao.wxn.NovoChamado;
 
-// Única classe de abertura de chamado que pode ser exposta à LLM: só registra um pedido pendente e
-// não tem acesso ao DemandaGateway, então não consegue gravar nada na API da WXN.
+// Seguro para expor à LLM: só registra o pedido e não acessa o DemandaGateway.
 @Service
 public class SolicitacaoChamadoFerramenta {
 

@@ -28,7 +28,6 @@ public class ConsultaDemandaFerramenta {
 		this.gateway = gateway;
 	}
 
-	// empresaId vem do contexto do servidor; o único dado que vem do usuário ou da LLM é o protocolo.
 	public ResultadoConsultaDemanda consultarStatus(UUID empresaId, String protocoloInformado) {
 		Objects.requireNonNull(empresaId, "empresaId é obrigatório");
 		String protocolo = normalizar(protocoloInformado);

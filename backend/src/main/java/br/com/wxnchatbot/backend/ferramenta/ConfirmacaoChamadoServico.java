@@ -16,8 +16,7 @@ import br.com.wxnchatbot.backend.integracao.wxn.Chamado;
 import br.com.wxnchatbot.backend.integracao.wxn.DemandaGateway;
 import br.com.wxnchatbot.backend.integracao.wxn.DemandaIndisponivelException;
 
-// Único ponto que grava um chamado na API da WXN. Não deve ser exposto à LLM: o orquestrador só o
-// chama depois de reconhecer, por regra, uma confirmação explícita do cliente.
+// Único ponto que grava na API da WXN; não expor à LLM.
 @Service
 public class ConfirmacaoChamadoServico {
 
@@ -43,7 +42,6 @@ public class ConfirmacaoChamadoServico {
 			pendentes.consumir(conversaId, pedido.get());
 			return new Aberto(chamado);
 		} catch (DemandaIndisponivelException e) {
-			// O pedido continua pendente: tentar de novo reaproveita a mesma chave e não duplica o chamado.
 			log.warn("API da WXN indisponível ao abrir chamado da conversa {}: {}", conversaId, e.getMessage());
 			return new Indisponivel();
 		}
