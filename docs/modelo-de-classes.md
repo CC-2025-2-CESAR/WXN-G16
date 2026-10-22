@@ -6,9 +6,13 @@ da WXN. O código está em
 e os testes em
 [`backend/src/test/java/br/com/wxnchatbot/backend/model`](../backend/src/test/java/br/com/wxnchatbot/backend/model).
 
-São classes de domínio puras: **sem JPA, sem banco, sem Spring**. A
-persistência entra depois, quando as primeiras funcionalidades forem
-implementadas (ver [`modelagem-inicial.md`](modelagem-inicial.md)).
+As classes de domínio são mapeadas como entidades JPA e guardadas em
+PostgreSQL. As regras de negócio ficam no próprio modelo; em volta dele, a
+camada de acesso a dados
+([`repository`](../backend/src/main/java/br/com/wxnchatbot/backend/repository))
+e o serviço da fila de conversas
+([`service`](../backend/src/main/java/br/com/wxnchatbot/backend/service))
+(ver também [`modelagem-inicial.md`](modelagem-inicial.md)).
 
 ## Diagrama de classes
 
@@ -190,8 +194,9 @@ classDiagram
 
 ## Requisitos de POO aplicados
 
-- **Atributos**: todos `private`, tipados, e `final` quando não podem mudar
-  depois de criados (`id`, `cliente`, `chatbot`, `conversa`, `enviadaEm`…).
+- **Atributos**: todos `private` e tipados. Os campos que o JPA preenche ao
+  ler do banco não são `final` (por isso os construtores `protected` vazios);
+  o que não pode mudar depois de criado simplesmente não tem *setter*.
 - **Encapsulamento**
   - Só existem *setters* onde faz sentido mudar o valor (`setNome`,
     `setTelefone`, `setEmail`, `setMensagemBoasVindas`), e todos revalidam.
@@ -256,7 +261,7 @@ stateDiagram-v2
   da Semana 11 e ainda depende de validação com a WXN.
 - **`Conversa` aponta para `Cliente`, e o contrário não.** A relação é
   1 para N, mas guardar a lista de conversas dentro de `Cliente` exigiria
-  manter os dois lados sincronizados. Com JPA isso vira um `@ManyToOne` na
+  manter os dois lados sincronizados. Com JPA isso virou um `@ManyToOne` na
   conversa e a lista, se for preciso, sai de uma consulta.
 - **O `id` é um `UUID` gerado na criação.** Quando entrar o banco, a decisão
   de manter o UUID ou trocar por um id gerado pelo banco é revista junto com
