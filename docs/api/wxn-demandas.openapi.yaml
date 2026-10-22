@@ -54,7 +54,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Demanda'
         '400':
-          description: Protocolo ou cabeçalho inválido (`PROTOCOLO_INVALIDO`)
+          description: >
+            Protocolo em formato inválido (`PROTOCOLO_INVALIDO`) ou cabeçalho
+            ausente/malformado (`REQUISICAO_INVALIDA`)
           content:
             application/json:
               schema:
@@ -106,7 +108,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Chamado'
         '400':
-          description: Dados inválidos
+          description: Corpo ou cabeçalho inválido (`REQUISICAO_INVALIDA`)
           content:
             application/json:
               schema:
