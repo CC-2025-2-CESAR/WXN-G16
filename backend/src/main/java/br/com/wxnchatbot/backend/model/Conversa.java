@@ -171,4 +171,8 @@ public class Conversa {
 	public Optional<Instant> getEncerradaEm() {
 		return Optional.ofNullable(encerradaEm);
 	}
+	
+	public Empresa getEmpresa() {
+		return empresa;
+	}
 }

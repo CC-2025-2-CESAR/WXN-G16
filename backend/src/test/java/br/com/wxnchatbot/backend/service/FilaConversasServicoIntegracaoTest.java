@@ -27,6 +27,7 @@ import br.com.wxnchatbot.backend.model.TipoRemetente;
 import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import br.com.wxnchatbot.backend.model.Empresa;
 
 @SpringBootTest
 @Transactional
@@ -41,16 +42,19 @@ class FilaConversasServicoIntegracaoTest {
 	@PersistenceContext
 	private EntityManager em;
 
+	private Empresa empresa;
 	private Chatbot lily;
 
 	@BeforeEach
 	void criarChatbot() {
+		empresa = new Empresa("Empresa Demo");
+   		em.persist(empresa);
 		lily = new Chatbot("Lily", "Oi, sou a Lily!");
 		em.persist(lily);
 	}
 
 	private Conversa novaConversa(String nome, String telefone) {
-		Cliente cliente = new Cliente(nome, telefone);
+		Cliente cliente = new Cliente(empresa, nome, telefone);
 		em.persist(cliente);
 		Conversa conversa = new Conversa(cliente, lily);
 		em.persist(conversa);
