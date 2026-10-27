@@ -7,10 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class EntidadesTest {
+	
+	private static final Empresa EMPRESA = new Empresa("Empresa Demo");
 
 	@Test
 	void clienteNormalizaTelefoneParaApenasDigitos() {
-		Cliente cliente = new Cliente("  Maria Souza  ", "+55 (81) 99999-1234");
+		Cliente cliente = new Cliente(EMPRESA, "  Maria Souza  ", "+55 (81) 99999-1234");
 
 		assertEquals("5581999991234", cliente.getTelefone());
 		assertEquals("Maria Souza", cliente.getNome());
@@ -19,15 +21,15 @@ class EntidadesTest {
 
 	@Test
 	void clienteRejeitaDadosInvalidos() {
-		assertThrows(IllegalArgumentException.class, () -> new Cliente("", "81999991234"));
-		assertThrows(IllegalArgumentException.class, () -> new Cliente("Maria", null));
-		assertThrows(IllegalArgumentException.class, () -> new Cliente("Maria", "12345"));
-		assertThrows(IllegalArgumentException.class, () -> new Cliente("Maria", "1234567890123456"));
+		assertThrows(IllegalArgumentException.class, () -> new Cliente(EMPRESA, "", "81999991234"));
+		assertThrows(IllegalArgumentException.class, () -> new Cliente(EMPRESA, "Maria", null));
+		assertThrows(IllegalArgumentException.class, () -> new Cliente(EMPRESA, "Maria", "12345"));
+		assertThrows(IllegalArgumentException.class, () -> new Cliente(EMPRESA, "Maria", "1234567890123456"));
 	}
 
 	@Test
 	void setNomeTambemValida() {
-		Cliente cliente = new Cliente("Maria", "81999991234");
+		Cliente cliente = new Cliente(EMPRESA, "Maria", "81999991234");
 
 		assertThrows(IllegalArgumentException.class, () -> cliente.setNome(" "));
 		assertEquals("Maria", cliente.getNome());
@@ -66,7 +68,7 @@ class EntidadesTest {
 
 	@Test
 	void ticketSoEPodeSerCriadoPelaConversaEExigeMotivo() {
-		Conversa conversa = new Conversa(new Cliente("Maria", "81999991234"), new Chatbot("Lily", "Oi!"));
+		Conversa conversa = new Conversa(new Cliente(EMPRESA, "Maria", "81999991234"), new Chatbot("Lily", "Oi!"));
 
 		assertThrows(IllegalArgumentException.class, () -> conversa.solicitarAtendente(" "));
 		assertTrue(conversa.getTicket().isEmpty());
