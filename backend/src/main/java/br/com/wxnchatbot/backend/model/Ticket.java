@@ -76,8 +76,9 @@ public class Ticket {
 		return conversa;
 	}
 
-	public Cliente getCliente() {
-		return conversa.getCliente();
+public Cliente getCliente() {
+		return conversa.getCliente()
+				.orElseThrow(() -> new IllegalStateException("Conversa sem cliente vinculado ao ticket"));
 	}
 
 	public Optional<Atendente> getAtendente() {

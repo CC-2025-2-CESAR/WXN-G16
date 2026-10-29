@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 class EntidadesTest {
 	
-	private static final Empresa EMPRESA = new Empresa("Empresa Demo");
+	private static final Empresa EMPRESA = new Empresa("Empresa Demo", "12345678000199");
 
 	@Test
 	void clienteNormalizaTelefoneParaApenasDigitos() {
@@ -68,7 +68,8 @@ class EntidadesTest {
 
 	@Test
 	void ticketSoEPodeSerCriadoPelaConversaEExigeMotivo() {
-		Conversa conversa = new Conversa(new Cliente(EMPRESA, "Maria", "81999991234"), new Chatbot("Lily", "Oi!"));
+		Conversa conversa = new Conversa(new Chatbot("Lily", "Oi!"));
+		conversa.vincularCliente(new Cliente(EMPRESA, "Maria", "81999991234"));
 
 		assertThrows(IllegalArgumentException.class, () -> conversa.solicitarAtendente(" "));
 		assertTrue(conversa.getTicket().isEmpty());
