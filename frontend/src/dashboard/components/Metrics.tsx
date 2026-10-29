@@ -1,76 +1,61 @@
-import { Icon } from "../icons";
-export function Metrics() {
+import type { ConversaNaFila } from "../../types/fila";
+import { duracao } from "../formato";
+import { Icon, type IconName } from "../icons";
+
+type Props = {
+  fila: ConversaNaFila[] | null;
+  minhas: number;
+  agora: number;
+};
+type Card = { titulo: string; valor: string; nota: string; icone: IconName };
+export function Metrics({ fila, minhas, agora }: Props) {
+  const esperas = (fila ?? []).map((c) => agora - Date.parse(c.abertoEm));
+  const maior = esperas.length ? duracao(Math.max(...esperas)) : "—";
+  const media = esperas.length
+    ? duracao(esperas.reduce((soma, e) => soma + e, 0) / esperas.length)
+    : "—";
+  const cards: Card[] = [
+    {
+      titulo: "Aguardando agora",
+      valor: fila ? String(fila.length) : "—",
+      nota: "conversas na fila",
+      icone: "inbox",
+    },
+    {
+      titulo: "Maior espera",
+      valor: maior,
+      nota: "conversa mais antiga da fila",
+      icone: "clock",
+    },
+    {
+      titulo: "Espera média",
+      valor: media,
+      nota: "entre as conversas da fila",
+      icone: "clock",
+    },
+    {
+      titulo: "Em atendimento por você",
+      valor: String(minhas),
+      nota: "nesta sessão",
+      icone: "users",
+    },
+  ];
   return (
-    <section
-      className="metrics"
-      aria-label="Indicadores ilustrativos de demonstração"
-    >
-      <article className="metric">
-        <div className="metric-top">
-          <span>Volume de atendimentos</span>
-          <span className="metric-icon">
-            <Icon name="messages" />
-          </span>
-        </div>
-        <div className="metric-value">
-          1.284
-          <svg className="sparkline" viewBox="0 0 90 32" aria-hidden="true">
-            <path d="M1 27 14 21 25 24 37 12 49 16 61 8 73 12 89 2" />
-          </svg>
-        </div>
-        <div className="metric-bottom">
-          <span className="trend">↗ 8,2%</span>
-          <span>vs. período anterior</span>
-        </div>
-      </article>
-      <article className="metric">
-        <div className="metric-top">
-          <span>Tempo médio de resposta</span>
-          <span className="metric-icon">
-            <Icon name="clock" />
-          </span>
-        </div>
-        <div className="metric-value">
-          01m <span>42s</span>
-        </div>
-        <div className="metric-bottom">
-          <span className="trend">↘ 12%</span>
-          <span>mais rápido neste período</span>
-        </div>
-      </article>
-      <article className="metric">
-        <div className="metric-top">
-          <span>Resolução pela IA</span>
-          <span className="metric-icon">
-            <Icon name="sparkles" />
-          </span>
-        </div>
-        <div className="metric-value">
-          72<span>%</span>
-          <span className="metric-mini-badge">Lily</span>
-        </div>
-        <div className="metric-bottom">
-          <span className="mini-progress">
-            <i />
-          </span>
-          <span>924 resolvidos</span>
-        </div>
-      </article>
-      <article className="metric">
-        <div className="metric-top">
-          <span>Transferência para humano</span>
-          <span className="metric-icon">
-            <Icon name="users" />
-          </span>
-        </div>
-        <div className="metric-value">
-          18<span>%</span>
-        </div>
-        <div className="metric-bottom">
-          <span className="neutral-trend">231</span>
-          <span>conversas transferidas</span>
-        </div>
-      </article>
+    <section className="metrics" aria-label="Indicadores da fila">
+      {cards.map((c) => (
+        <article className="metric" key={c.titulo}>
+          <div className="metric-top">
+            <span>{c.titulo}</span>
+            <span className="metric-icon">
+              <Icon name={c.icone} />
+            </span>
+          </div>
+          <div className="metric-value">{c.valor}</div>
+          <div className="metric-bottom">
+            <span>{c.nota}</span>
+          </div>
+        </article>
+      ))}
     </section>
   );
 }

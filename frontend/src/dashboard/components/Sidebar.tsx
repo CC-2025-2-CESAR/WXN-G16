@@ -1,12 +1,23 @@
+import { StatusBadge } from "../../components/StatusBadge";
+import type { BackendStatus } from "../../hooks/useBackendHealth";
+import type { Atendente } from "../../types/fila";
+import { iniciais } from "../formato";
 import { Icon } from "../icons";
-export type View = "queue" | "history";
+
 type Props = {
-  view: View;
-  count: number;
-  onNavigate: (view: View) => void;
+  count: number | undefined;
+  atendente: Atendente | null;
+  backend: BackendStatus;
+  onHome: () => void;
   onSettings: () => void;
 };
-export function Sidebar({ view, count, onNavigate, onSettings }: Props) {
+export function Sidebar({
+  count,
+  atendente,
+  backend,
+  onHome,
+  onSettings,
+}: Props) {
   return (
     <aside className="sidebar" aria-label="Navegação principal">
       <a
@@ -15,7 +26,7 @@ export function Sidebar({ view, count, onNavigate, onSettings }: Props) {
         aria-label="WXN Tecnologia, início"
         onClick={(e) => {
           e.preventDefault();
-          onNavigate("queue");
+          onHome();
         }}
       >
         <span className="brand-mark">
@@ -36,20 +47,18 @@ export function Sidebar({ view, count, onNavigate, onSettings }: Props) {
       <nav>
         <button
           title="Fila de conversas"
-          className={`nav-item ${view === "queue" ? "active" : ""}`}
-          onClick={() => onNavigate("queue")}
+          className="nav-item active"
+          aria-current="page"
+          onClick={onHome}
         >
           <Icon name="inbox" />
           <span>Fila de conversas</span>
-          <b>{count}</b>
+          <b>{count ?? "—"}</b>
         </button>
-        <button
-          title="Histórico"
-          className={`nav-item ${view === "history" ? "active" : ""}`}
-          onClick={() => onNavigate("history")}
-        >
+        <button title="Histórico (em breve)" className="nav-item" disabled>
           <Icon name="history" />
           <span>Histórico</span>
+          <b>Em breve</b>
         </button>
         <button title="Configurações" className="nav-item" onClick={onSettings}>
           <Icon name="settings" />
@@ -63,25 +72,31 @@ export function Sidebar({ view, count, onNavigate, onSettings }: Props) {
           </span>
           <strong>Lily está por aqui</strong>
           <p>Sua assistente virtual cuida das primeiras respostas.</p>
-          <span className="online-label">
-            <i />
-            Assistente ativa na demo
-          </span>
         </div>
         <div className="environment">
-          <i />
-          <span>
-            Ambiente de demonstração<small>Dados fictícios · Grupo 16</small>
-          </span>
+          <StatusBadge status={backend} />
         </div>
         <button
           className="sidebar-profile"
           onClick={onSettings}
-          aria-label="Configurações de Ana Martins"
+          aria-label={
+            atendente
+              ? `Configurações de ${atendente.nome}`
+              : "Escolher o atendente"
+          }
         >
-          <span className="avatar profile-avatar">AM</span>
+          <span className="avatar profile-avatar">
+            {atendente ? iniciais(atendente.nome) : "?"}
+          </span>
           <span>
-            Ana Martins<small>Supervisora</small>
+            {atendente?.nome ?? "Atendente"}
+            <small>
+              {atendente
+                ? atendente.disponivel
+                  ? "Disponível"
+                  : "Indisponível"
+                : "Não escolhido"}
+            </small>
           </span>
           <Icon name="chevron-right" />
         </button>

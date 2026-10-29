@@ -1,33 +1,81 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Icon } from "../icons";
-import { statuses, type Conversation, type Status } from "../data";
-import type { View } from "./Sidebar";
+import { useEffect, useRef, useState } from "react";
+import type { ConversaNaFila, EmAtendimento } from "../../types/fila";
+import { esperaDesde, formatarTelefone, hora, iniciais } from "../formato";
+import { Icon, type IconName } from "../icons";
 
+export type Aba = "fila" | "atendimento";
 type Props = {
-  conversations: Conversation[];
-  selectedId: number | null;
-  onSelect: (id: number) => void;
-  view: View;
+  fila: ConversaNaFila[] | null;
+  atendimento: EmAtendimento[];
+  aba: Aba;
+  onAba: (aba: Aba) => void;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  erro: string | null;
+  carregando: boolean;
+  agora: number;
   onRefresh: () => void;
+};
+type Linha = {
+  id: string;
+  nome: string;
+  telefone: string;
+  motivo: string;
+  status: "waiting" | "active";
+  rotulo: string;
+  tempo: string;
+  atendente: string | null;
 };
 const PAGE_SIZE = 6;
 const normalize = (value: string) =>
   value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+function estadoVazio(
+  aba: Aba,
+  fila: ConversaNaFila[] | null,
+  erro: string | null,
+  total: number,
+  search: string,
+): { icon: IconName; title: string; text: string } | null {
+  if (aba === "fila" && fila === null)
+    return erro
+      ? null
+      : {
+          icon: "refresh",
+          title: "Carregando a fila…",
+          text: "Buscando as conversas no servidor.",
+        };
+  if (total) return null;
+  if (search)
+    return {
+      icon: "search",
+      title: "Nenhuma conversa encontrada",
+      text: "Tente outro nome, telefone ou motivo.",
+    };
+  if (aba === "fila")
+    return {
+      icon: "inbox",
+      title: "Nenhuma conversa aguardando atendimento",
+      text: "Quando um cliente pedir atendimento humano, ele aparece aqui.",
+    };
+  return {
+    icon: "users",
+    title: "Nenhuma conversa em atendimento",
+    text: "As conversas que você assumir aparecem aqui até a página ser recarregada.",
+  };
+}
 export function ConversationTable({
-  conversations,
+  fila,
+  atendimento,
+  aba,
+  onAba,
   selectedId,
   onSelect,
-  view,
+  erro,
+  carregando,
+  agora,
   onRefresh,
 }: Props) {
   const [search, setSearch] = useState("");
-  const [company, setCompany] = useState("");
-  const [agent, setAgent] = useState("");
-  const [period, setPeriod] = useState("today");
-  const [channel, setChannel] = useState("");
-  const [priority, setPriority] = useState("");
-  const [status, setStatus] = useState<Status | "all">("all");
-  const [extra, setExtra] = useState(false);
   const [page, setPage] = useState(1);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -48,88 +96,91 @@ export function ConversationTable({
     window.addEventListener("keydown", shortcut);
     return () => window.removeEventListener("keydown", shortcut);
   }, []);
-  useEffect(() => {
-    setPage(1);
-  }, [search, company, agent, period, channel, priority, status, view]);
 
-  const filteredBase = useMemo(
-    () =>
-      conversations.filter((c) => {
-        if (view === "history" && c.status !== "resolved") return false;
-        if (
-          (period === "today" && c.daysAgo !== 0) ||
-          (period === "week" && c.daysAgo > 6)
-        )
-          return false;
-        if (
-          (company && c.company !== company) ||
-          (channel && c.channel !== channel) ||
-          (priority && c.priority !== priority)
-        )
-          return false;
-        if (agent === "none" ? Boolean(c.agent) : agent && c.agent !== agent)
-          return false;
-        return normalize(
-          `${c.name} ${c.company} ${c.id} ${c.preview}`,
-        ).includes(normalize(search));
-      }),
-    [conversations, search, company, agent, period, channel, priority, view],
-  );
-  const filtered = filteredBase.filter(
-    (c) => status === "all" || c.status === status,
-  );
-  const maxPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const bate = (c: {
+    clienteNome: string;
+    clienteTelefone: string;
+    motivo: string;
+  }) =>
+    normalize(
+      `${c.clienteNome} ${c.clienteTelefone} ${formatarTelefone(c.clienteTelefone)} ${c.motivo}`,
+    ).includes(normalize(search));
+  const aguardando = (fila ?? []).filter(bate);
+  const ativas = atendimento.filter((a) => bate(a.detalhe));
+  const linhas: Linha[] =
+    aba === "fila"
+      ? aguardando.map((c) => ({
+          id: c.conversaId,
+          nome: c.clienteNome,
+          telefone: c.clienteTelefone,
+          motivo: c.motivo,
+          status: "waiting",
+          rotulo: `${c.posicao}º na fila`,
+          tempo: `Aguardando há ${esperaDesde(c.abertoEm, agora)}`,
+          atendente: null,
+        }))
+      : ativas.map((a) => ({
+          id: a.detalhe.conversaId,
+          nome: a.detalhe.clienteNome,
+          telefone: a.detalhe.clienteTelefone,
+          motivo: a.detalhe.motivo,
+          status: "active",
+          rotulo: "Em atendimento",
+          tempo: `Assumida às ${hora(a.assumidaEm)}`,
+          atendente: a.atendente.nome,
+        }));
+  const maxPages = Math.max(1, Math.ceil(linhas.length / PAGE_SIZE));
   const currentPage = Math.min(page, maxPages);
-  const visible = filtered.slice(
+  const visible = linhas.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
-  const clear = () => {
-    setSearch("");
-    setCompany("");
-    setAgent("");
-    setPeriod("today");
-    setChannel("");
-    setPriority("");
-    setStatus("all");
-    setPage(1);
-  };
-  const tabs: Array<[Status | "all", string]> =
-    view === "history"
-      ? [["all", "Finalizadas"]]
-      : [
-          ["all", "Todas"],
-          ["waiting", "Aguardando"],
-          ["active", "Em atendimento"],
-          ["ai", "Com a Lily"],
-        ];
+  const tabs: Array<[Aba, string, number]> = [
+    ["fila", "Aguardando", aguardando.length],
+    ["atendimento", "Em atendimento (nesta sessão)", ativas.length],
+  ];
+  const vazio = estadoVazio(aba, fila, erro, linhas.length, search);
 
   return (
-    <section
-      className="queue-panel"
-      aria-label={
-        view === "history" ? "Histórico de atendimento" : "Fila de atendimento"
-      }
-    >
+    <section className="queue-panel" aria-label="Fila de atendimento">
       <div className="queue-toolbar">
         <div className="queue-title">
           <h2>
-            {view === "history"
-              ? "Conversas finalizadas"
-              : "Todas as conversas"}{" "}
-            <span>{filtered.length}</span>
+            {aba === "fila"
+              ? "Conversas aguardando"
+              : "Em atendimento nesta sessão"}{" "}
+            <span>{linhas.length}</span>
           </h2>
           <p>
-            {view === "history"
-              ? "Consulte o histórico dos atendimentos concluídos."
-              : "Acompanhe e gerencie seus atendimentos."}
+            {aba === "fila"
+              ? "Quem pediu atendimento primeiro aparece primeiro."
+              : "Conversas que você assumiu desde que abriu esta página."}
           </p>
         </div>
-        <button className="button secondary small" onClick={onRefresh}>
+        <button
+          className="button secondary small"
+          onClick={onRefresh}
+          disabled={carregando}
+        >
           <Icon name="refresh" />
           Atualizar fila
         </button>
       </div>
+      {erro && (
+        <div className="error-banner" role="alert">
+          <span>
+            {erro}
+            {fila && " Exibindo a última atualização."}
+          </span>
+          <button
+            className="text-button"
+            onClick={onRefresh}
+            disabled={carregando}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
       <div className="filters">
         <label className="search-field">
           <Icon name="search" />
@@ -137,104 +188,29 @@ export function ConversationTable({
             ref={searchRef}
             type="search"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar nome, mensagem ou protocolo..."
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Buscar nome, telefone ou motivo..."
             aria-label="Buscar conversas"
           />
           <kbd>/</kbd>
         </label>
-        <div className="select-filters">
-          <label>
-            <span className="sr-only">Empresa</span>
-            <select
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-            >
-              <option value="">Todas as empresas</option>
-              {[
-                "Alfa Comércio",
-                "Grupo Norte",
-                "Vértice Ltda.",
-                "Beta Serviços",
-              ].map((v) => (
-                <option key={v}>{v}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="sr-only">Atendente</span>
-            <select value={agent} onChange={(e) => setAgent(e.target.value)}>
-              <option value="">Atendente</option>
-              <option value="none">Não atribuído</option>
-              {["Ana Martins", "Paulo M.", "Lily"].map((v) => (
-                <option key={v}>{v}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="sr-only">Período</span>
-            <select value={period} onChange={(e) => setPeriod(e.target.value)}>
-              <option value="today">Hoje</option>
-              <option value="week">Últimos 7 dias</option>
-              <option value="all">Todo o período</option>
-            </select>
-          </label>
-          <button
-            className={`button secondary icon-only ${extra ? "filter-active" : ""}`}
-            onClick={() => setExtra(!extra)}
-            aria-label="Mais filtros"
-            aria-expanded={extra}
-          >
-            <Icon name="sliders" />
-          </button>
-        </div>
       </div>
-      {extra && (
-        <div className="extra-filters">
-          <label>
-            Canal
-            <select
-              value={channel}
-              onChange={(e) => setChannel(e.target.value)}
-            >
-              <option value="">Todos os canais</option>
-              <option>WhatsApp</option>
-              <option>Webchat</option>
-            </select>
-          </label>
-          <label>
-            Prioridade
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-            >
-              <option value="">Todas</option>
-              <option>Alta</option>
-              <option>Média</option>
-              <option>Baixa</option>
-            </select>
-          </label>
-          <button onClick={clear} className="text-button">
-            Limpar filtros
-          </button>
-        </div>
-      )}
-      <div className="status-tabs" aria-label="Status da conversa">
-        {tabs.map(([value, label]) => (
+      <div className="status-tabs" aria-label="Lista de conversas">
+        {tabs.map(([value, label, total]) => (
           <button
             key={value}
-            aria-pressed={status === value}
-            className={`status-tab ${status === value ? "active" : ""}`}
-            onClick={() => setStatus(value)}
+            aria-pressed={aba === value}
+            className={`status-tab ${aba === value ? "active" : ""}`}
+            onClick={() => {
+              onAba(value);
+              setPage(1);
+            }}
           >
             {label}
-            <span>
-              {
-                filteredBase.filter(
-                  (c) => value === "all" || c.status === value,
-                ).length
-              }
-            </span>
+            <span>{total}</span>
           </button>
         ))}
       </div>
@@ -244,7 +220,7 @@ export function ConversationTable({
             <tr>
               <th>CLIENTE</th>
               <th>STATUS</th>
-              <th>ÚLTIMA MENSAGEM</th>
+              <th>MOTIVO</th>
               <th>ATENDENTE</th>
               <th>
                 <span className="sr-only">Abrir conversa</span>
@@ -260,37 +236,30 @@ export function ConversationTable({
               >
                 <td>
                   <div className="client-cell">
-                    <span className={`avatar color-${c.color}`}>
-                      {c.initials}
-                    </span>
+                    <span className="avatar">{iniciais(c.nome)}</span>
                     <div className="client-info">
-                      <strong>{c.name}</strong>
-                      <small>{c.company}</small>
+                      <strong>{c.nome}</strong>
+                      <small>{formatarTelefone(c.telefone)}</small>
                     </div>
                   </div>
                 </td>
                 <td>
-                  <span className={`badge ${c.status}`}>
-                    {statuses[c.status]}
-                  </span>
+                  <span className={`badge ${c.status}`}>{c.rotulo}</span>
                 </td>
                 <td>
-                  <span className="message-preview" title={c.preview}>
-                    {c.preview}
+                  <span className="message-preview" title={c.motivo}>
+                    {c.motivo}
                   </span>
-                  <span className="message-time">
-                    {c.daysAgo ? `há ${c.daysAgo} dias` : c.ago}{" "}
-                    <span className="table-channel">· {c.channel}</span>
-                  </span>
+                  <span className="message-time">{c.tempo}</span>
                 </td>
                 <td className="agent-cell">
-                  {c.agent && <span className="agent-dot" />}
-                  {c.agent || "Não atribuído"}
+                  {c.atendente && <span className="agent-dot" />}
+                  {c.atendente ?? "Não atribuído"}
                 </td>
                 <td>
                   <button
                     className="row-open"
-                    aria-label={`Abrir conversa de ${c.name}`}
+                    aria-label={`Abrir conversa de ${c.nome}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelect(c.id);
@@ -304,21 +273,23 @@ export function ConversationTable({
           </tbody>
         </table>
       </div>
-      {filtered.length === 0 && (
+      {vazio && (
         <div className="empty-state">
-          <Icon name="search" />
-          <h3>Nenhuma conversa por aqui</h3>
-          <p>Tente outro nome ou ajuste os filtros.</p>
-          <button className="button secondary" onClick={clear}>
-            Limpar filtros
-          </button>
+          <Icon name={vazio.icon} />
+          <h3>{vazio.title}</h3>
+          <p>{vazio.text}</p>
+          {search && (
+            <button className="button secondary" onClick={() => setSearch("")}>
+              Limpar busca
+            </button>
+          )}
         </div>
       )}
       <footer className="table-footer">
         <span>
-          {filtered.length
-            ? `Mostrando ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filtered.length)} de ${filtered.length} conversas`
-            : "Nenhuma conversa encontrada"}
+          {linhas.length
+            ? `Mostrando ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, linhas.length)} de ${linhas.length} conversas`
+            : "Nenhuma conversa"}
         </span>
         <div className="pagination">
           <button

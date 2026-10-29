@@ -1,34 +1,64 @@
-import { useEffect, useRef, useState } from "react";
-import { statuses, type Conversation } from "../data";
+import { Fragment, useEffect, useRef } from "react";
+import { useDetalheFila } from "../../hooks/useDetalheFila";
+import type {
+  Atendente,
+  ConversaNaFila,
+  DetalheConversaFila,
+  EmAtendimento,
+  TipoRemetente,
+} from "../../types/fila";
+import {
+  dataHora,
+  dia,
+  esperaDesde,
+  formatarTelefone,
+  hora,
+  iniciais,
+} from "../formato";
 import { Icon } from "../icons";
 
+const kinds = {
+  CLIENTE: "client",
+  CHATBOT: "bot",
+  ATENDENTE: "agent",
+} satisfies Record<TipoRemetente, string>;
 type Props = {
-  conversation: Conversation | undefined;
+  conversa: ConversaNaFila | undefined;
+  atendimento: EmAtendimento | undefined;
+  atendente: Atendente | null;
+  agora: number;
+  ocupado: boolean;
   onClose: () => void;
-  onAssume: () => void;
+  onAssume: (detalhe: DetalheConversaFila) => void;
   onResolve: () => void;
-  onTransfer: () => void;
-  onSend: (text: string) => void;
+  onSettings: () => void;
+  onIndisponivel: () => void;
 };
 export function ConversationDetail({
-  conversation: c,
+  conversa,
+  atendimento,
+  atendente,
+  agora,
+  ocupado,
   onClose,
   onAssume,
   onResolve,
-  onTransfer,
-  onSend,
+  onSettings,
+  onIndisponivel,
 }: Props) {
-  const [draft, setDraft] = useState("");
+  const busca = useDetalheFila(
+    conversa && !atendimento ? conversa.conversaId : null,
+  );
+  const mensagens = atendimento?.detalhe.mensagens ?? busca.detalhe?.mensagens;
+  const total = mensagens?.length;
   const threadRef = useRef<HTMLDivElement>(null);
-  const lastCount = useRef(c?.messages.length || 0);
   useEffect(() => {
-    if (threadRef.current && c && c.messages.length > lastCount.current)
-      threadRef.current.scrollTo({
-        top: threadRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    lastCount.current = c?.messages.length || 0;
-  }, [c?.messages.length]);
+    threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight });
+  }, [total, atendimento]);
+  useEffect(() => {
+    if (busca.indisponivel) onIndisponivel();
+  }, [busca.indisponivel, onIndisponivel]);
+  const c = atendimento?.detalhe ?? conversa;
   if (!c)
     return (
       <div className="empty-detail">
@@ -40,23 +70,22 @@ export function ConversationDetail({
         </p>
       </div>
     );
-  const isMine = c.status === "active" && c.agent === "Ana Martins";
-  const canSend = isMine && draft.trim().length > 0;
-  const send = () => {
-    if (canSend) {
-      onSend(draft.trim());
-      setDraft("");
-    }
-  };
+  const responsavel = atendimento?.atendente ?? atendente;
+  const ultima = mensagens?.at(-1);
+  const metadados = [
+    ["Na fila desde", dataHora(c.abertoEm)],
+    atendimento
+      ? ["Assumida às", hora(atendimento.assumidaEm)]
+      : ["Aguardando há", esperaDesde(c.abertoEm, agora)],
+    ["Mensagens", String(total ?? "—")],
+    ["Última mensagem", ultima ? hora(ultima.enviadaEm) : "—"],
+  ];
   return (
     <>
       <header className="detail-header">
         <div>
           <div className="eyebrow">CONVERSA SELECIONADA</div>
-          <h2>
-            #{c.id}
-            <span className="detail-channel">· {c.channel}</span>
-          </h2>
+          <h2>{atendimento ? "Em atendimento" : "Aguardando atendente"}</h2>
         </div>
         <button
           className="icon-button"
@@ -68,169 +97,124 @@ export function ConversationDetail({
       </header>
       <section className="contact-summary" aria-label="Dados do cliente">
         <div className="contact-top">
-          <span className={`avatar color-${c.color}`}>{c.initials}</span>
+          <span className="avatar">{iniciais(c.clienteNome)}</span>
           <div>
-            <h3 className="contact-name">{c.name}</h3>
-            <div className="contact-phone">{c.phone}</div>
+            <h3 className="contact-name">{c.clienteNome}</h3>
+            <div className="contact-phone">
+              {formatarTelefone(c.clienteTelefone)}
+            </div>
           </div>
-          <span className={`badge ${c.status}`}>{statuses[c.status]}</span>
+          <span className={`badge ${atendimento ? "active" : "waiting"}`}>
+            {atendimento ? "Em atendimento" : "Aguardando humano"}
+          </span>
         </div>
         <div className="contact-metadata">
-          <div>
-            <div className="metadata-label">Empresa</div>
-            <div className="metadata-value">{c.company}</div>
-          </div>
-          <div>
-            <div className="metadata-label">Canal</div>
-            <div className="metadata-value">
-              <Icon name={c.channel === "WhatsApp" ? "whatsapp" : "monitor"} />
-              {c.channel}
+          {metadados.map(([label, value]) => (
+            <div key={label}>
+              <div className="metadata-label">{label}</div>
+              <div className="metadata-value">{value}</div>
             </div>
-          </div>
-          <div>
-            <div className="metadata-label">Assunto</div>
-            <div className="metadata-value">{c.subject}</div>
-          </div>
-          <div>
-            <div className="metadata-label">Prioridade</div>
-            <div className="metadata-value">
-              <i
-                className={`priority-dot ${c.priority === "Alta" ? "high" : c.priority === "Baixa" ? "low" : ""}`}
-              />
-              {c.priority}
-            </div>
-          </div>
+          ))}
         </div>
       </section>
-      <section
-        className="ai-summary"
-        aria-label="Resumo ilustrativo da conversa"
-      >
+      <section className="reason" aria-label="Motivo da solicitação">
         <div className="summary-title">
-          <Icon name="sparkles" />
-          RESUMO DA LILY<span>DEMO</span>
+          <Icon name="users" />
+          MOTIVO DA SOLICITAÇÃO
         </div>
-        <p>{c.summary}</p>
+        <p>{c.motivo}</p>
       </section>
       <div
         className="chat-thread"
         ref={threadRef}
         role="log"
-        aria-label={`Histórico de ${c.name}`}
+        aria-label={`Histórico de ${c.clienteNome}`}
+        aria-busy={busca.carregando}
       >
-        <div className="day-separator">
-          {c.daysAgo === 0 ? "Hoje" : `Há ${c.daysAgo} dias`} · 09:38
-        </div>
-        {c.messages.map((m) =>
-          m.kind === "system" ? (
-            <div className="system-message" key={m.id}>
-              <Icon name="check" />
-              {m.text}
-            </div>
-          ) : (
-            <div
-              className={`chat-message ${m.kind === "client" ? "outbound" : ""}`}
-              key={m.id}
-            >
-              <div className="bubble">
-                {m.kind === "bot" && (
-                  <div className="bubble-sender">Lily · Assistente virtual</div>
-                )}
-                {m.kind === "agent" && (
-                  <div className="bubble-sender">Ana Martins · Atendente</div>
-                )}
-                {m.text}
+        {busca.carregando && (
+          <div className="system-message">Carregando mensagens…</div>
+        )}
+        {busca.erro && (
+          <div className="error-banner" role="alert">
+            <span>{busca.erro}</span>
+            {!busca.indisponivel && (
+              <button className="text-button" onClick={busca.recarregar}>
+                Tentar novamente
+              </button>
+            )}
+          </div>
+        )}
+        {mensagens?.length === 0 && (
+          <div className="system-message">Nenhuma mensagem nesta conversa.</div>
+        )}
+        {mensagens?.map((m, i) => {
+          const kind = kinds[m.tipoRemetente];
+          const dayLabel = dia(m.enviadaEm);
+          return (
+            <Fragment key={`${m.enviadaEm}-${i}`}>
+              {(i === 0 || dayLabel !== dia(mensagens[i - 1].enviadaEm)) && (
+                <div className="day-separator">
+                  {dayLabel === dia(agora) ? "Hoje" : dayLabel}
+                </div>
+              )}
+              <div
+                className={`chat-message ${kind === "client" ? "outbound" : ""}`}
+              >
+                <div className="bubble">
+                  {kind === "bot" && (
+                    <div className="bubble-sender">
+                      Lily · Assistente virtual
+                    </div>
+                  )}
+                  {kind === "agent" && (
+                    <div className="bubble-sender">Atendente</div>
+                  )}
+                  {m.conteudo}
+                </div>
+                <div className="message-meta">
+                  {hora(m.enviadaEm)}
+                  {kind === "client" && " · Cliente"}
+                </div>
               </div>
-              <div className="message-meta">
-                {m.time}
-                {m.kind === "client" ? " · Cliente" : " · ✓✓"}
-              </div>
-            </div>
-          ),
+            </Fragment>
+          );
+        })}
+        {atendimento && (
+          <div className="system-message">
+            Histórico até o momento em que você assumiu a conversa.
+          </div>
         )}
       </div>
       <footer className="composer">
         <div className="composer-top">
           <strong>
-            {c.status === "resolved"
-              ? "Conversa finalizada"
-              : isMine
-                ? "Você está no atendimento"
-                : c.status === "active"
-                  ? `${c.agent} está no atendimento`
-                  : c.status === "ai"
-                    ? "Lily está no atendimento"
-                    : "Aguardando um atendente"}
+            {atendimento
+              ? "Você está no atendimento"
+              : "Aguardando um atendente"}
           </strong>
-          <span>Simulação local</span>
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            send();
-          }}
-        >
-          <div className="compose-input">
-            <textarea
-              aria-label="Sua resposta"
-              placeholder={
-                c.status === "resolved"
-                  ? "Este atendimento foi encerrado."
-                  : isMine
-                    ? "Digite sua resposta..."
-                    : "Assuma a conversa para responder..."
-              }
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              disabled={!isMine}
-              maxLength={2000}
-              onKeyDown={(e) => {
-                if (
-                  e.key === "Enter" &&
-                  !e.shiftKey &&
-                  !e.nativeEvent.isComposing
-                ) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-            />
-            <div className="compose-tools">
-              <span className="compose-hint">
-                Enter para enviar · Shift + Enter para nova linha
-              </span>
-              <button
-                type="submit"
-                className="send-button"
-                disabled={!canSend}
-                aria-label="Enviar resposta"
-              >
-                <Icon name="send" />
-              </button>
-            </div>
-          </div>
-        </form>
-        <div className="detail-actions">
-          <button
-            className="button secondary"
-            disabled={c.status === "resolved"}
-            onClick={onTransfer}
-          >
-            <Icon name="transfer" />
-            Transferir
-          </button>
-          {c.status === "resolved" ? (
-            <button className="button" disabled>
-              <Icon name="check" />
-              Finalizada
+          {responsavel ? (
+            <span>
+              Como {responsavel.nome}
+              {!responsavel.disponivel && " (indisponível)"}
+            </span>
+          ) : (
+            <button className="text-button" onClick={onSettings}>
+              Escolher atendente
             </button>
-          ) : isMine ? (
-            <button className="button" onClick={onResolve}>
+          )}
+        </div>
+        <div className="detail-actions">
+          {atendimento ? (
+            <button className="button" disabled={ocupado} onClick={onResolve}>
               <Icon name="check" />
               Encerrar conversa
             </button>
           ) : (
-            <button className="button" onClick={onAssume}>
+            <button
+              className="button"
+              disabled={ocupado || !busca.detalhe || !atendente}
+              onClick={() => busca.detalhe && onAssume(busca.detalhe)}
+            >
               Assumir conversa
               <Icon name="chevron-right" />
             </button>

@@ -1,193 +1,168 @@
-import { useEffect, useRef, useState } from "react";
-import { Icon } from "./icons";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { StatusBadge } from "../components/StatusBadge";
+import { useAtendentes } from "../hooks/useAtendentes";
+import { useBackendHealth } from "../hooks/useBackendHealth";
+import { useFila } from "../hooks/useFila";
 import {
-  createInitialData,
-  loadConversations,
-  STORAGE_KEY,
-  type Conversation,
-  type Message,
-} from "./data";
-import { Sidebar, type View } from "./components/Sidebar";
+  API_URL,
+  ErroApi,
+  assumirConversa,
+  encerrarConversa,
+  mensagemDoErro,
+} from "../services/api";
+import type { DetalheConversaFila, EmAtendimento } from "../types/fila";
+import { Icon } from "./icons";
+import { esperaDesde, horaExata, iniciais, plural } from "./formato";
+import { Sidebar } from "./components/Sidebar";
 import { Metrics } from "./components/Metrics";
-import { ConversationTable } from "./components/ConversationTable";
+import { ConversationTable, type Aba } from "./components/ConversationTable";
 import { ConversationDetail } from "./components/ConversationDetail";
 import { Modal } from "./components/Modal";
 
-type ModalType =
-  | "settings"
-  | "notifications"
-  | "transfer"
-  | "resolve"
-  | "reset"
-  | null;
-const now = () =>
-  new Intl.DateTimeFormat("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date());
-function systemMessage(text: string): Message {
-  return { id: crypto.randomUUID(), kind: "system", text, time: now() };
-}
+type ModalType = "settings" | "notifications" | "resolve" | null;
 
 export default function App() {
-  const [conversations, setConversations] = useState(loadConversations);
-  const [selectedId, setSelectedId] = useState<number | null>(() =>
-    window.matchMedia("(max-width: 860px)").matches ? null : 4521,
-  );
-  const [view, setView] = useState<View>("queue");
+  const fila = useFila();
+  const atendentes = useAtendentes();
+  const backend = useBackendHealth();
+  const [aba, setAba] = useState<Aba>("fila");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [atendimento, setAtendimento] = useState<EmAtendimento[]>([]);
   const [modal, setModal] = useState<ModalType>(null);
-  const [targetAgent, setTargetAgent] = useState("Paulo M.");
-  const [toast, setToast] = useState("");
-  const [tableKey, setTableKey] = useState(0);
+  const [ocupado, setOcupado] = useState(false);
+  const [toast, setToast] = useState<{ text: string; erro: boolean } | null>(
+    null,
+  );
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
-  const selected = conversations.find((c) => c.id === selectedId);
-  const waiting = conversations.filter((c) => c.status === "waiting").length;
-  const mine = conversations.filter(
-    (c) => c.status === "active" && c.agent === "Ana Martins",
-  ).length;
+  const painel = useRef<HTMLElement>(null);
+  const abridor = useRef<HTMLElement | null>(null);
+  const atendente = atendentes.atendente;
+  const recarregarFila = fila.recarregar;
+  const aguardando = fila.itens?.length;
+  const emAtendimento = atendimento.find(
+    (a) => a.detalhe.conversaId === selectedId,
+  );
+  const naFila = fila.itens?.find((c) => c.conversaId === selectedId);
+  const aberta = emAtendimento ?? naFila;
+  const maisAntiga = fila.itens?.[0];
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
-    } catch {
-      /* O armazenamento é opcional. */
-    }
-  }, [conversations]);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
-  const notify = (text: string) => {
+  const notify = useCallback((text: string, erro = false) => {
     clearTimeout(toastTimer.current);
-    setToast(text);
-    toastTimer.current = setTimeout(() => setToast(""), 4000);
+    setToast({ text, erro });
+    toastTimer.current = setTimeout(() => setToast(null), erro ? 8000 : 5000);
+  }, []);
+  const abrir = (id: string) => {
+    const ativo = document.activeElement;
+    abridor.current =
+      ativo instanceof HTMLElement && ativo !== document.body ? ativo : null;
+    if (id === selectedId) painel.current?.focus();
+    else setSelectedId(id);
   };
-  const updateSelected = (fn: (c: Conversation) => Conversation) => {
-    setConversations((all) =>
-      all.map((c) => (c.id === selectedId ? fn(c) : c)),
-    );
-  };
-  const assume = () => {
-    if (!selected || selected.status === "resolved") return;
-    updateSelected((c) => ({
-      ...c,
-      status: "active",
-      agent: "Ana Martins",
-      messages: [
-        ...c.messages,
-        systemMessage("Ana Martins assumiu a conversa"),
-      ],
-    }));
-    notify(`Você assumiu a conversa #${selected.id}.`);
-  };
-  const send = (text: string) => {
-    if (
-      !selected ||
-      selected.status !== "active" ||
-      selected.agent !== "Ana Martins" ||
-      !text.trim()
-    )
-      return;
-    const message: Message = {
-      id: crypto.randomUUID(),
-      text: text.trim().slice(0, 2000),
-      kind: "agent",
-      time: now(),
+  const fecharPainel = useCallback(() => {
+    setSelectedId(null);
+    if (abridor.current?.isConnected) abridor.current.focus();
+  }, []);
+  const conversaSaiuDaFila = useCallback(() => {
+    notify("Esta conversa não está mais na fila.");
+    recarregarFila();
+  }, [notify, recarregarFila]);
+
+  if (selectedId && fila.itens && !aberta) setSelectedId(null);
+  useEffect(() => {
+    if (selectedId) painel.current?.focus();
+  }, [selectedId]);
+  useEffect(() => {
+    if (!selectedId || modal) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !(e.target instanceof HTMLInputElement))
+        fecharPainel();
     };
-    updateSelected((c) => ({
-      ...c,
-      preview: message.text,
-      ago: "agora",
-      messages: [...c.messages, message],
-    }));
-    notify("Resposta adicionada à demonstração.");
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [selectedId, modal, fecharPainel]);
+  const openSettings = () => {
+    atendentes.recarregar();
+    setModal("settings");
   };
-  const resolveConversation = () => {
-    updateSelected((c) => ({
-      ...c,
-      status: "resolved",
-      messages: [
-        ...c.messages,
-        systemMessage("Atendimento encerrado por Ana Martins"),
-      ],
-    }));
-    setModal(null);
-    notify("Conversa encerrada. Ela está disponível no histórico.");
+  const assume = async (detalhe: DetalheConversaFila) => {
+    if (!atendente || ocupado) return;
+    setOcupado(true);
+    try {
+      await assumirConversa(detalhe.conversaId, atendente.id);
+      setAtendimento((lista) => [
+        ...lista,
+        { detalhe, atendente, assumidaEm: Date.now() },
+      ]);
+      setAba("atendimento");
+      notify(`Você assumiu a conversa de ${detalhe.clienteNome}.`);
+    } catch (erro) {
+      notify(mensagemDoErro(erro), true);
+    } finally {
+      setOcupado(false);
+      fila.recarregar();
+    }
   };
-  const transfer = () => {
-    const toQueue = targetAgent === "queue";
-    updateSelected((c) => ({
-      ...c,
-      status: toQueue ? "waiting" : targetAgent === "Lily" ? "ai" : "active",
-      agent: toQueue ? "" : targetAgent,
-      messages: [
-        ...c.messages,
-        systemMessage(
-          toQueue
-            ? "Conversa devolvida à fila de atendimento"
-            : `Conversa transferida para ${targetAgent}`,
-        ),
-      ],
-    }));
-    setModal(null);
-    notify(
-      toQueue
-        ? "Conversa devolvida à fila."
-        : `Conversa transferida para ${targetAgent}.`,
-    );
-  };
-  const navigate = (next: View) => {
-    setView(next);
-    setTableKey((k) => k + 1);
-    if (window.matchMedia("(max-width: 860px)").matches) setSelectedId(null);
-    else if (next === "history")
-      setSelectedId(
-        conversations.find((c) => c.status === "resolved" && c.daysAgo === 0)
-          ?.id ?? null,
+  const resolveConversation = async () => {
+    if (!emAtendimento || ocupado) return;
+    const { conversaId, clienteNome } = emAtendimento.detalhe;
+    const retirar = () =>
+      setAtendimento((lista) =>
+        lista.filter((a) => a.detalhe.conversaId !== conversaId),
       );
-    else setSelectedId(4521);
+    setOcupado(true);
+    try {
+      await encerrarConversa(conversaId);
+      retirar();
+      notify(`Atendimento de ${clienteNome} encerrado.`);
+    } catch (erro) {
+      if (erro instanceof ErroApi && [404, 409].includes(erro.status))
+        retirar();
+      notify(mensagemDoErro(erro), true);
+    } finally {
+      setOcupado(false);
+      setModal(null);
+      fila.recarregar();
+    }
   };
-  const reset = () => {
-    setConversations(createInitialData());
-    setSelectedId(4521);
-    setView("queue");
-    setTableKey((k) => k + 1);
-    setModal(null);
-    notify("Demonstração restaurada para a apresentação.");
+  const goHome = () => {
+    setAba("fila");
+    setSelectedId(null);
   };
   const dateLabel = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "short",
     timeZone: "America/Sao_Paulo",
   }).format(new Date());
+  const placeholder = atendentes.lista
+    ? "Escolha quem está atendendo"
+    : atendentes.erro
+      ? "Lista indisponível"
+      : "Carregando atendentes…";
 
   return (
     <>
       <div className="app-shell">
         <Sidebar
-          view={view}
-          count={conversations.filter((c) => c.daysAgo === 0).length}
-          onNavigate={navigate}
-          onSettings={() => setModal("settings")}
+          count={aguardando}
+          atendente={atendente}
+          backend={backend}
+          onHome={goHome}
+          onSettings={openSettings}
         />
         <main className="main-content">
           <header className="page-header">
             <div>
               <div className="breadcrumb">
-                Atendimento <span>/</span>{" "}
-                <b>{view === "queue" ? "Visão geral" : "Histórico"}</b>
+                Atendimento <span>/</span> <b>Visão geral</b>
               </div>
               <h1>
-                {view === "queue"
-                  ? "Fila de conversas"
-                  : "Histórico de conversas"}
+                Fila de conversas
                 <span className="heading-dot" />
               </h1>
-              <p>
-                {view === "queue"
-                  ? "Cada conversa, um atendimento mais próximo."
-                  : "Bons atendimentos ficam na memória."}
-              </p>
+              <p>Cada conversa, um atendimento mais próximo.</p>
             </div>
             <div className="header-actions">
               <span className="today">{dateLabel}</span>
@@ -197,98 +172,149 @@ export default function App() {
                 aria-label="Ver notificações"
               >
                 <Icon name="bell" />
-                {waiting > 0 && <i />}
+                {aguardando ? <i /> : null}
               </button>
               <button
                 className="profile-button"
-                onClick={() => setModal("settings")}
-                aria-label="Perfil de Ana Martins"
+                onClick={openSettings}
+                aria-label={
+                  atendente
+                    ? `Perfil de ${atendente.nome}`
+                    : "Escolher o atendente"
+                }
               >
-                <span className="avatar profile-avatar header-avatar">AM</span>
+                <span className="avatar profile-avatar header-avatar">
+                  {atendente ? iniciais(atendente.nome) : "?"}
+                </span>
               </button>
             </div>
           </header>
-          <Metrics />
+          <Metrics
+            fila={fila.itens}
+            minhas={atendimento.length}
+            agora={fila.atualizadoEm}
+          />
           <ConversationTable
-            key={tableKey}
-            conversations={conversations}
+            fila={fila.itens}
+            atendimento={atendimento}
+            aba={aba}
+            onAba={setAba}
             selectedId={selectedId}
-            onSelect={setSelectedId}
-            view={view}
-            onRefresh={() =>
-              notify("Fila atualizada com os dados locais da demonstração.")
-            }
+            onSelect={abrir}
+            erro={fila.erro}
+            carregando={fila.carregando}
+            agora={fila.atualizadoEm}
+            onRefresh={fila.recarregar}
           />
           <footer className="main-footer">
             <span>
               <i />
-              Tudo pronto para um bom atendimento
+              {fila.itens
+                ? `Fila atualizada às ${horaExata(fila.atualizadoEm)}`
+                : fila.erro
+                  ? "Fila indisponível"
+                  : "Carregando a fila…"}
             </span>
             <span>
-              WXN Tecnologia <b>·</b> Indicadores ilustrativos
+              WXN Tecnologia <b>·</b> Atualização automática a cada 15 s
             </span>
           </footer>
         </main>
         <aside
-          className={`conversation-panel ${selectedId === null ? "panel-closed" : ""}`}
+          ref={painel}
+          tabIndex={-1}
+          className={`conversation-panel ${aberta ? "" : "panel-closed"}`}
           aria-label="Detalhes da conversa"
         >
           <ConversationDetail
             key={selectedId}
-            conversation={selected}
-            onClose={() => setSelectedId(null)}
+            conversa={naFila}
+            atendimento={emAtendimento}
+            atendente={atendente}
+            agora={fila.atualizadoEm}
+            ocupado={ocupado}
+            onClose={fecharPainel}
             onAssume={assume}
             onResolve={() => setModal("resolve")}
-            onTransfer={() => {
-              setTargetAgent("Paulo M.");
-              setModal("transfer");
-            }}
-            onSend={send}
+            onSettings={openSettings}
+            onIndisponivel={conversaSaiuDaFila}
           />
         </aside>
       </div>
-      {toast && (
-        <div className="toast" role="status" aria-live="polite">
-          {toast}
+      <div className="toast-region">
+        <div role="status" aria-live="polite">
+          {toast && !toast.erro && <div className="toast">{toast.text}</div>}
         </div>
-      )}
+        <div role="alert">
+          {toast?.erro && <div className="toast">{toast.text}</div>}
+        </div>
+      </div>
       {modal === "settings" && (
-        <Modal
-          title="Configurações da demonstração"
-          onClose={() => setModal(null)}
-        >
+        <Modal title="Configurações" onClose={() => setModal(null)}>
           <div className="settings-profile">
-            <span className="avatar profile-avatar">AM</span>
+            <span className="avatar profile-avatar">
+              {atendente ? iniciais(atendente.nome) : "?"}
+            </span>
             <div>
-              <strong>Ana Martins</strong>
-              <small>Supervisora · Workspace WXN</small>
+              <strong>{atendente?.nome ?? "Nenhum atendente escolhido"}</strong>
+              <small>
+                {atendente
+                  ? `${atendente.email} · ${atendente.disponivel ? "Disponível" : "Indisponível"}`
+                  : "Escolha abaixo quem está atendendo."}
+              </small>
             </div>
           </div>
-          <p>
-            As interações são simuladas neste navegador. O backend, a IA e o
-            WhatsApp não estão conectados nesta versão.
-          </p>
+          <label>
+            Atendendo como
+            <select
+              value={atendente?.id ?? ""}
+              onChange={(e) => atendentes.escolher(e.target.value)}
+              disabled={!atendentes.lista}
+            >
+              <option value="" disabled>
+                {placeholder}
+              </option>
+              {atendentes.lista?.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nome}
+                  {a.disponivel ? "" : " (indisponível)"}
+                </option>
+              ))}
+            </select>
+          </label>
+          {atendentes.erro && (
+            <div className="error-banner" role="alert">
+              <span>{atendentes.erro}</span>
+              <button className="text-button" onClick={atendentes.recarregar}>
+                Tentar novamente
+              </button>
+            </div>
+          )}
+          {atendentes.lista?.length === 0 && (
+            <p>Nenhum atendente cadastrado no servidor.</p>
+          )}
+          <p>A escolha fica salva neste navegador.</p>
           <div className="setting-row">
             <span>
-              Memória local
-              <small>Alterações salvas automaticamente neste navegador.</small>
+              Servidor
+              <small>{API_URL}</small>
             </span>
-            <span className="badge resolved">Ativa</span>
+            <StatusBadge status={backend} />
           </div>
           <div className="setting-row">
             <span>
-              Indicadores
-              <small>Valores ilustrativos para apresentar o dashboard.</small>
+              Fila de conversas
+              <small>
+                {fila.itens
+                  ? `Atualizada às ${horaExata(fila.atualizadoEm)}`
+                  : "Ainda não carregada"}
+              </small>
             </span>
-            <Icon name="messages" />
+            {aguardando !== undefined && (
+              <span className="badge waiting">{aguardando} aguardando</span>
+            )}
           </div>
           <div className="modal-actions">
-            <button
-              className="button secondary"
-              onClick={() => setModal("reset")}
-            >
-              Restaurar demonstração
-            </button>
             <button className="button" onClick={() => setModal(null)}>
               Concluir
             </button>
@@ -297,19 +323,46 @@ export default function App() {
       )}
       {modal === "notifications" && (
         <Modal title="Central de notificações" onClose={() => setModal(null)}>
+          {fila.erro && (
+            <div className="notification-item">
+              <strong>Não foi possível atualizar a fila</strong>
+              <small>{fila.erro}</small>
+            </div>
+          )}
           <div className="notification-item">
-            <strong>{waiting} conversas aguardando atendimento</strong>
-            <small>A fila precisa de atenção da equipe.</small>
+            {aguardando === undefined ? (
+              <strong>Fila ainda não carregada</strong>
+            ) : (
+              <>
+                <strong>
+                  {plural(
+                    aguardando,
+                    "conversa aguardando",
+                    "conversas aguardando",
+                  )}{" "}
+                  atendimento
+                </strong>
+                <small>
+                  {maisAntiga
+                    ? `A mais antiga espera há ${esperaDesde(maisAntiga.abertoEm, fila.atualizadoEm)}.`
+                    : "Nenhuma conversa na fila agora."}
+                </small>
+              </>
+            )}
           </div>
           <div className="notification-item">
-            <strong>{mine} conversas atribuídas a você</strong>
-            <small>Continue o atendimento como Ana Martins.</small>
-          </div>
-          <div className="notification-item">
-            <strong>Lily cuida das primeiras respostas</strong>
+            <strong>
+              {plural(
+                atendimento.length,
+                "conversa em atendimento",
+                "conversas em atendimento",
+              )}{" "}
+              por você
+            </strong>
             <small>
-              {conversations.filter((c) => c.status === "ai").length} conversas
-              com a assistente virtual na simulação.
+              {atendente
+                ? `Atendendo como ${atendente.nome}.`
+                : "Escolha o atendente nas configurações."}
             </small>
           </div>
           <div className="modal-actions">
@@ -317,7 +370,7 @@ export default function App() {
               className="button"
               onClick={() => {
                 setModal(null);
-                navigate("queue");
+                goHome();
               }}
             >
               Ver fila de conversas
@@ -325,68 +378,26 @@ export default function App() {
           </div>
         </Modal>
       )}
-      {modal === "transfer" && selected && (
-        <Modal
-          title={`Transferir conversa #${selected.id}`}
-          onClose={() => setModal(null)}
-        >
-          <p>
-            Escolha quem vai dar continuidade ao atendimento de {selected.name}.
-            O histórico será mantido na demonstração.
-          </p>
-          <label>
-            Transferir para
-            <select
-              value={targetAgent}
-              onChange={(e) => setTargetAgent(e.target.value)}
-            >
-              <option>Paulo M.</option>
-              <option>Ana Martins</option>
-              <option value="Lily">Lily · Assistente virtual</option>
-              <option value="queue">Fila de atendimento</option>
-            </select>
-          </label>
-          <div className="modal-actions">
-            <button className="button secondary" onClick={() => setModal(null)}>
-              Cancelar
-            </button>
-            <button className="button" onClick={transfer}>
-              Confirmar transferência
-            </button>
-          </div>
-        </Modal>
-      )}
-      {modal === "resolve" && (
+      {modal === "resolve" && emAtendimento && (
         <Modal title="Encerrar atendimento?" onClose={() => setModal(null)}>
           <p>
-            A conversa será marcada como resolvida e continuará disponível no
-            histórico.
-          </p>
-          <div className="modal-actions">
-            <button className="button secondary" onClick={() => setModal(null)}>
-              Continuar atendendo
-            </button>
-            <button className="button" onClick={resolveConversation}>
-              Encerrar atendimento
-            </button>
-          </div>
-        </Modal>
-      )}
-      {modal === "reset" && (
-        <Modal title="Restaurar a demonstração?" onClose={() => setModal(null)}>
-          <p>
-            As respostas e mudanças de status desta simulação serão removidas.
-            Os clientes e as conversas voltarão ao estado inicial.
+            A conversa de {emAtendimento.detalhe.clienteNome} será encerrada e
+            sairá da sua lista de atendimentos.
           </p>
           <div className="modal-actions">
             <button
               className="button secondary"
-              onClick={() => setModal("settings")}
+              disabled={ocupado}
+              onClick={() => setModal(null)}
             >
-              Cancelar
+              Continuar atendendo
             </button>
-            <button className="button" onClick={reset}>
-              Restaurar agora
+            <button
+              className="button"
+              disabled={ocupado}
+              onClick={resolveConversation}
+            >
+              Encerrar atendimento
             </button>
           </div>
         </Modal>
