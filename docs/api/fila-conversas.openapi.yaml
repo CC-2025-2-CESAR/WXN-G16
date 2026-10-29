@@ -1,0 +1,278 @@
+openapi: 3.0.3
+info:
+  title: API da fila de atendimento
+  version: 0.1.0
+  description: |
+    Contrato usado pela tela de atendimento para ver a fila de conversas que
+    aguardam um atendente humano, abrir uma conversa, assumi-la e encerrá-la.
+    É uma camada fina sobre o `FilaConversasServico`: as regras de negócio
+    ficam no serviço e no modelo, não nos controllers.
+
+    ### Ordem da fila
+    Quem pediu atendimento primeiro vem antes (`abertoEm` crescente). A
+    `posicao` começa em 1.
+
+    ### Atribuição concorrente
+    Se dois atendentes assumem a mesma conversa ao mesmo tempo, o banco
+    serializa os pedidos: um recebe `204` e o outro, `409`.
+
+    ### Erros
+    Toda resposta de erro é `application/problem+json` (RFC 9457), com `title`,
+    `status` e `detail` em português. A tela mostra o `detail` ao usuário.
+    Erros que não são regra de negócio conhecida respondem `500` com uma
+    mensagem genérica, sem detalhes internos.
+
+    ### Autenticação
+    Não há autenticação nesta etapa: qualquer cliente que alcance o backend
+    pode chamar a API. A origem permitida pelo CORS vem de
+    `CORS_ALLOWED_ORIGINS` (padrão `http://localhost:5173`).
+servers:
+  - url: http://localhost:8080
+    description: Backend local
+security: []
+paths:
+  /api/fila:
+    get:
+      operationId: visualizarFila
+      summary: Lista as conversas aguardando atendente
+      responses:
+        '200':
+          description: Fila na ordem de chegada (vazia quando ninguém está esperando)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConversaNaFila'
+        '500':
+          $ref: '#/components/responses/ErroInterno'
+  /api/fila/{conversaId}:
+    get:
+      operationId: abrirConversaDaFila
+      summary: Abre uma conversa da fila com as mensagens
+      parameters:
+        - $ref: '#/components/parameters/ConversaId'
+      responses:
+        '200':
+          description: Conversa com o histórico de mensagens, da mais antiga para a mais nova
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetalheConversaFila'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          description: A conversa não existe
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '409':
+          description: A conversa existe, mas não está na fila (por exemplo, já foi assumida)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '500':
+          $ref: '#/components/responses/ErroInterno'
+  /api/fila/{conversaId}/assumir:
+    post:
+      operationId: assumirConversa
+      summary: Um atendente assume uma conversa da fila
+      description: |
+        Em caso de sucesso, a conversa sai da fila e o ticket passa a
+        `EM_ATENDIMENTO` com esse atendente.
+      parameters:
+        - $ref: '#/components/parameters/ConversaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssumirConversa'
+      responses:
+        '204':
+          description: Conversa assumida
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          description: A conversa ou o atendente não existe
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '409':
+          description: >
+            Regra de negócio violada: a conversa não está aguardando atendente
+            (inclusive quando outro atendente a assumiu antes) ou o atendente
+            não está disponível
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '500':
+          $ref: '#/components/responses/ErroInterno'
+  /api/conversas/{conversaId}/encerrar:
+    post:
+      operationId: encerrarConversa
+      summary: Encerra uma conversa
+      description: Encerra a conversa e, se houver ticket, o marca como `RESOLVIDO`.
+      parameters:
+        - $ref: '#/components/parameters/ConversaId'
+      responses:
+        '204':
+          description: Conversa encerrada
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          description: A conversa não existe
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '409':
+          description: A conversa já está encerrada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '500':
+          $ref: '#/components/responses/ErroInterno'
+  /api/atendentes:
+    get:
+      operationId: listarAtendentes
+      summary: Lista os atendentes
+      responses:
+        '200':
+          description: Atendentes ordenados por nome
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Atendente'
+        '500':
+          $ref: '#/components/responses/ErroInterno'
+components:
+  parameters:
+    ConversaId:
+      name: conversaId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    RequisicaoInvalida:
+      description: Identificador malformado, corpo ausente, ilegível ou com campo inválido
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    ErroInterno:
+      description: Erro inesperado no servidor
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+  schemas:
+    ConversaNaFila:
+      type: object
+      required: [posicao, conversaId, clienteNome, clienteTelefone, motivo, abertoEm]
+      properties:
+        posicao:
+          type: integer
+          minimum: 1
+          example: 1
+        conversaId:
+          type: string
+          format: uuid
+        clienteNome:
+          type: string
+          example: Maria Souza
+        clienteTelefone:
+          type: string
+          description: Apenas dígitos
+          example: '81999990001'
+        motivo:
+          type: string
+          example: Quer falar com uma pessoa
+        abertoEm:
+          type: string
+          format: date-time
+          description: Quando o cliente pediu atendimento humano
+    DetalheConversaFila:
+      type: object
+      required: [conversaId, clienteNome, clienteTelefone, motivo, abertoEm, mensagens]
+      properties:
+        conversaId:
+          type: string
+          format: uuid
+        clienteNome:
+          type: string
+        clienteTelefone:
+          type: string
+        motivo:
+          type: string
+        abertoEm:
+          type: string
+          format: date-time
+        mensagens:
+          type: array
+          items:
+            $ref: '#/components/schemas/Mensagem'
+    Mensagem:
+      type: object
+      required: [tipoRemetente, conteudo, enviadaEm]
+      properties:
+        tipoRemetente:
+          type: string
+          enum: [CLIENTE, CHATBOT, ATENDENTE]
+        conteudo:
+          type: string
+        enviadaEm:
+          type: string
+          format: date-time
+    AssumirConversa:
+      type: object
+      required: [atendenteId]
+      properties:
+        atendenteId:
+          type: string
+          format: uuid
+    Atendente:
+      type: object
+      required: [id, nome, email, disponivel]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nome:
+          type: string
+          example: Ana Martins
+        email:
+          type: string
+          example: ana.martins@demo.wxn.example
+        disponivel:
+          type: boolean
+          description: Atendente indisponível não consegue assumir conversas
+    Problema:
+      type: object
+      description: Corpo de erro no formato RFC 9457 (`ProblemDetail` do Spring)
+      required: [title, status, detail]
+      properties:
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Conflito
+        status:
+          type: integer
+          example: 409
+        detail:
+          type: string
+          example: O atendente não está disponível
+        instance:
+          type: string
+          example: /api/fila/1d34fe98-112f-4024-ac3c-a342c8ef4850/assumir
