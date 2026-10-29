@@ -3,12 +3,14 @@
 Fundação técnica do projeto de atendimento automatizado (chatbot / agente de
 IA) para a **WXN Tecnologia** — Projeto 3, Computação, CESAR School.
 
-> **Situação atual (22/10/2026):** o ambiente de desenvolvimento e de deploy
-> está pronto e o backend já tem o modelo de dados, a fila de conversas, o
-> classificador de urgência, o mock da API da WXN e as ferramentas do chatbot.
-> O que ainda **não existe** é o fluxo de conversa de ponta a ponta (endpoint
-> de mensagens e orquestrador), a integração com a LLM e as telas do chat e do
-> dashboard. Veja [Próximos passos](#próximos-passos).
+> **Situação atual (29/10/2026):** o ambiente de desenvolvimento e de deploy
+> está pronto e o backend já tem o modelo de dados, a fila de conversas com a
+> API REST dela, o classificador de urgência, o mock da API da WXN, as
+> ferramentas do chatbot e um orquestrador de conversa que ainda usa uma LLM
+> fake. O frontend já tem o dashboard de atendimento (fila, assumir e
+> encerrar). O que ainda **não existe** é o endpoint de mensagens do chat, a
+> integração com a LLM de verdade e a tela do chat. Veja
+> [Próximos passos](#próximos-passos).
 
 ## Sobre o projeto
 
@@ -41,12 +43,13 @@ flowchart LR
 ```
 
 O que **já existe** de ponta a ponta é o caminho `Dashboard React → REST API
-→ Spring Boot → PostgreSQL` reduzido ao mínimo: o frontend chama
-`GET /api/health` e o backend responde. No backend também já existem o modelo
-persistido no PostgreSQL, a fila de conversas, o classificador de urgência e
-as ferramentas do chatbot, que consultam a API da WXN (hoje um mock). Ainda
-são só arquitetura planejada a LLM (`AI`), o `RAG` e as telas do chat e do
-dashboard.
+→ Spring Boot → PostgreSQL`: o dashboard lista a fila de conversas que
+aguardam um atendente, abre cada uma, assume e encerra (ver
+[`docs/ui-fila-atendimento.md`](docs/ui-fila-atendimento.md)). No backend
+também já existem o orquestrador do turno da conversa (com uma LLM fake), o
+classificador de urgência e as ferramentas do chatbot, que consultam a API da
+WXN (hoje um mock). Ainda são só arquitetura planejada a LLM de verdade
+(`AI`), o `RAG` e a tela do chat.
 
 ## Tecnologias
 
@@ -126,9 +129,10 @@ e/ou **Eclipse** — os dois funcionam sem ajuste nenhum:
    ```
 
    Se pedir a senha e conectar sem erro, está pronto — pode sair com `\q`.
-   O banco começa vazio: as tabelas são criadas pelo Hibernate, a partir das
-   entidades JPA, na primeira vez que o backend subir (`ddl-auto=update`).
-   Ainda não há migrations versionadas.
+   O banco começa vazio: as tabelas são criadas pelo Flyway, a partir das
+   migrations em `backend/src/main/resources/db/migration`, na primeira vez
+   que o backend subir. O Hibernate só confere se as entidades JPA batem com
+   elas (`ddl-auto=validate`).
 
 Prefere GUI? O **pgAdmin** faz os mesmos dois passos (criar login role +
 criar database) pela interface gráfica, se preferir não usar o terminal.
@@ -171,17 +175,31 @@ No PowerShell: `$env:SPRING_PROFILES_ACTIVE="mock"; ./mvnw spring-boot:run`.
 Dados, protocolos de teste e como usar as ferramentas estão em
 [`docs/integracao-wxn.md`](docs/integracao-wxn.md).
 
+### Dados de demonstração
+
+Para ver a fila de atendimento com conversas de exemplo, suba o backend com o
+perfil `demo`, que cria dados fictícios uma única vez:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
+```
+
+No PowerShell: `./mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=demo"`.
+O que é criado e como usar a tela estão em
+[`docs/ui-fila-atendimento.md`](docs/ui-fila-atendimento.md).
+
 ### Testes
 
 ```bash
 cd backend
-./mvnw -Dtest='!BackendApplicationTests' -Dsurefire.failIfNoSpecifiedTests=false test
+./mvnw -Dtest='!BackendApplicationTests,!*IntegracaoTest' -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
 Esse comando roda os testes que não precisam de banco. O
-`BackendApplicationTests` sobe o contexto do Spring e exige o PostgreSQL local
-do passo anterior; `./mvnw verify` roda tudo. O CI executa isso em todo pull
-request para `develop` e `main`, com um Postgres de teste.
+`BackendApplicationTests` e os `*IntegracaoTest` sobem o contexto do Spring e
+exigem o PostgreSQL local do passo anterior; `./mvnw verify` roda tudo. O CI
+executa isso em todo pull request para `develop` e `main`, com um Postgres de
+teste.
 
 ## Executando o frontend
 
@@ -193,9 +211,10 @@ npm install
 npm run dev
 ```
 
-Abra `http://localhost:5173`. A página mostra "Backend conectado" se o
-backend (passo anterior) estiver rodando, ou "Backend indisponível" caso
-contrário — é só isso que esta página faz por enquanto.
+Abra `http://localhost:5173`. O dashboard mostra a fila de conversas que
+aguardam um atendente e deixa abrir, assumir e encerrar cada uma, com o
+backend (passo anterior) rodando; com o perfil `demo` há conversas de
+exemplo. A lateral indica "Backend conectado" ou "Backend indisponível".
 
 ## Variáveis de ambiente
 
@@ -206,7 +225,7 @@ Veja `.env.example` (raiz) e `frontend/.env.example`. Resumo:
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Backend (`application.properties`) | já apontam para o banco local descrito acima — **não precisa configurar nada para rodar localmente** |
 | `SERVER_PORT` | Backend | `8080` |
 | `CORS_ALLOWED_ORIGINS` | Backend | `http://localhost:5173` |
-| `SPRING_PROFILES_ACTIVE` | Backend | vazio; use `mock` para a API simulada da WXN |
+| `SPRING_PROFILES_ACTIVE` | Backend | vazio; use `mock` para a API simulada da WXN e `demo` para os dados de demonstração |
 | `WXN_API_BASE_URL` | Backend | `http://localhost:8080/mock/wxn` (o mock do próprio backend) |
 | `VITE_API_URL` | Frontend (`frontend/.env`, se você criar um) | `http://localhost:8080` |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Reservado para etapas futuras | vazio — **não preencher com chave real neste repositório** |
@@ -224,25 +243,27 @@ WXN-G16/
 ├── backend/                 Spring Boot (Java 21, Maven)
 │   ├── src/main/java/br/com/wxnchatbot/backend/
 │   │   ├── config/          CorsConfig
-│   │   ├── controller/      HealthController (GET /api/health)
+│   │   ├── controller/      API REST (health, fila, conversas, atendentes) e TratadorDeErros
+│   │   ├── demonstracao/    Dados fictícios do perfil `demo`
 │   │   ├── ferramenta/      Ferramentas do chatbot (consultar demanda, abrir chamado)
 │   │   ├── integracao/wxn/  Gateway da API da WXN e o mock (perfil `mock`)
+│   │   ├── llm/             LlmClient (por ora só o fake) e o prompt da Lily
 │   │   ├── model/           Entidades JPA do domínio (Conversa, Mensagem…)
 │   │   ├── notificacao/     NotificationGateway (e-mail) e implementação fake
 │   │   ├── repository/      Repositórios Spring Data (Conversa, Atendente)
-│   │   ├── service/         Fila de conversas e classificador de urgência
+│   │   ├── service/         Fila de conversas, atendentes, classificador de urgência e orquestrador
 │   │   └── BackendApplication.java
 │   ├── src/test/java/…      Testes (JUnit)
-│   └── src/main/resources/application.properties
+│   └── src/main/resources/  application.properties e db/migration (Flyway)
 ├── frontend/                 React + TypeScript (Vite)
 │   └── src/
 │       ├── components/      StatusBadge
-│       ├── pages/            Dashboard
+│       ├── dashboard/        Tela da fila de atendimento
 │       ├── services/         api.ts (chamadas HTTP ao backend)
-│       ├── hooks/             useBackendHealth
-│       └── types/             HealthResponse
+│       ├── hooks/             Fila, detalhe da conversa, atendentes e status do backend
+│       └── types/             Tipos da API (fila, health)
 ├── docs/
-│   ├── api/                   Contratos OpenAPI (wxn-demandas.openapi.yaml)
+│   ├── api/                   Contratos OpenAPI (wxn-demandas, fila-conversas)
 │   ├── backlog-implementacao.md  Divisão em 8 vagas, tarefas por sprint e escolha da LLM
 │   ├── integracao-wxn.md      API simulada da WXN, ferramentas do chatbot e e-mail
 │   ├── modelagem-inicial.md  Entidades futuras (Company, User, Conversation…)
@@ -252,6 +273,8 @@ WXN-G16/
 │   ├── entrega-semana-11.md   Texto da entrega acadêmica da Semana 11
 │   ├── escopo-chatbot.md      Canal (WhatsApp), acesso a dados do cliente,
 │   │                           glossário técnico e priorização (MoSCoW)
+│   ├── spike-llm.md           Medições para escolher a LLM da Lily
+│   ├── ui-fila-atendimento.md  Tela da fila: como subir com dados de demonstração
 │   └── status-e-roadmap.md    Diagnóstico do projeto, riscos, escopo do
 │                               PoC do SR2 e roadmap até lá
 ├── .env.example
@@ -317,15 +340,15 @@ O plano completo (tarefas por pessoa, sprints e a escolha da LLM) está em
 [`docs/backlog-implementacao.md`](docs/backlog-implementacao.md). O que falta,
 nesta ordem aproximada:
 
-1. **Migrations** — adotar o Flyway e trocar `ddl-auto` para `validate`; criar
-   a `Empresa`, para isolar os dados por empresa.
-2. **Fluxo de conversa** — endpoint de mensagens, histórico persistido e o
-   orquestrador que decide entre consultar a WXN, encaminhar a um humano ou
-   responder.
-3. **LLM** — integração com o Spring AI (a recomendação é o plano gratuito da
-   Gemini, com a Groq de reserva), prompt da Lily e filtros de entrada e saída.
-4. **Frontend** — simulador de chat e dashboard de atendimento (fila de
-   conversas, assumir caso, métricas).
-5. **Autenticação** mínima nas rotas do painel.
-6. **Depois da PoC** — RAG (base de conhecimento), MCP, e-mail de confirmação
+1. **Fluxo de conversa** — endpoint de mensagens e o orquestrador completo:
+   hoje o `OrquestradorConversaServico` só guarda a mensagem e pede a resposta
+   ao `LlmClient`; falta decidir entre consultar a WXN, encaminhar a um humano
+   ou responder.
+2. **LLM** — integração com o Spring AI (a recomendação é o plano gratuito da
+   Gemini, com a Groq de reserva) no lugar da LLM fake, ajuste do prompt da
+   Lily e filtros de entrada e saída.
+3. **Frontend** — simulador de chat. O dashboard já mostra a fila, assume e
+   encerra conversas; faltam histórico e envio de mensagens pelo atendente.
+4. **Autenticação** mínima nas rotas do painel.
+5. **Depois da PoC** — RAG (base de conhecimento), MCP, e-mail de confirmação
    com SMTP real e o canal real do WhatsApp.
