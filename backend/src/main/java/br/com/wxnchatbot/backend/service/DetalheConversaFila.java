@@ -23,7 +23,7 @@ public record DetalheConversaFila(
 	static DetalheConversaFila de(Conversa conversa) {
 		Ticket ticket = conversa.getTicket()
 				.orElseThrow(() -> new IllegalStateException("Conversa na fila sem ticket: " + conversa.getId()));
-		Cliente cliente = conversa.getCliente();
+		Cliente cliente = conversa.getCliente().orElseThrow(() -> new IllegalStateException("Conversa sem cliente vinculado"));
 		List<MensagemResumo> mensagens = conversa.getMensagens().stream()
 				.map(m -> new MensagemResumo(m.getTipoRemetente(), m.getConteudo(), m.getEnviadaEm()))
 				.toList();

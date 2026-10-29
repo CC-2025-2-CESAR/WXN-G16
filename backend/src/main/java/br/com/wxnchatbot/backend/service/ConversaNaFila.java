@@ -18,7 +18,7 @@ public record ConversaNaFila(
 	static ConversaNaFila de(Conversa conversa, int posicao) {
 		Ticket ticket = conversa.getTicket()
 				.orElseThrow(() -> new IllegalStateException("Conversa na fila sem ticket: " + conversa.getId()));
-		Cliente cliente = conversa.getCliente();
+		Cliente cliente = conversa.getCliente().orElseThrow(() -> new IllegalStateException("Conversa sem cliente vinculado"));
 		return new ConversaNaFila(posicao, conversa.getId(), cliente.getNome(), cliente.getTelefone(),
 				ticket.getMotivo(), ticket.getAbertoEm());
 	}
