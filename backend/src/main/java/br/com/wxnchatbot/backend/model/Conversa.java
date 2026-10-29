@@ -29,12 +29,12 @@ public class Conversa {
 	@Id
 	private UUID id = UUID.randomUUID();
 	
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "empresa_id", nullable = false)
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "empresa_id")
 	private Empresa empresa;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "cliente_id", nullable = false)
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "cliente_id")
 	private Cliente cliente;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -65,13 +65,16 @@ public class Conversa {
 	protected Conversa() {
 	}
 
-	public Conversa(Cliente cliente, Chatbot chatbot) {
-		this.cliente = Objects.requireNonNull(cliente, "cliente é obrigatório");
-		this.empresa = this.cliente.getEmpresa();
+	public Conversa(Chatbot chatbot) {
 		this.chatbot = Objects.requireNonNull(chatbot, "chatbot é obrigatório");
 		if (!chatbot.isAtivo()) {
 			throw new IllegalStateException("O chatbot está desativado");
 		}
+	}
+
+	public void vincularCliente(Cliente cliente) {
+		this.cliente = Objects.requireNonNull(cliente, "cliente é obrigatório");
+		this.empresa = cliente.getEmpresa();
 	}
 
 	public Mensagem adicionarMensagem(Remetente remetente, String conteudo) {
@@ -130,7 +133,7 @@ public class Conversa {
 
 	private boolean podeEnviar(Remetente remetente) {
 		return switch (remetente.getTipo()) {
-			case CLIENTE -> remetente.equals(cliente);
+			case CLIENTE -> cliente == null || remetente.equals(cliente);
 			case CHATBOT -> remetente.equals(chatbot) && status != StatusConversa.COM_ATENDENTE;
 			case ATENDENTE -> remetente.equals(atendente) && status == StatusConversa.COM_ATENDENTE;
 		};
@@ -140,8 +143,8 @@ public class Conversa {
 		return id;
 	}
 
-	public Cliente getCliente() {
-		return cliente;
+	public Optional<Cliente> getCliente() {
+		return Optional.ofNullable(cliente);
 	}
 
 	public Chatbot getChatbot() {
@@ -172,7 +175,7 @@ public class Conversa {
 		return Optional.ofNullable(encerradaEm);
 	}
 	
-	public Empresa getEmpresa() {
-		return empresa;
+	public Optional<Empresa> getEmpresa() {
+		return Optional.ofNullable(empresa);
 	}
 }
