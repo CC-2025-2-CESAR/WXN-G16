@@ -157,6 +157,29 @@ curl http://localhost:8080/api/health
 Se a resposta acima aparecer, o backend está de pé **e** conectado ao banco
 (se a conexão falhasse, o Spring Boot não conseguiria terminar de subir).
 
+### Perfis do backend
+
+O perfil é escolhido pela variável `SPRING_PROFILES_ACTIVE`.
+
+| Perfil | Quando usar | O que muda |
+|---|---|---|
+| `dev` | Desenvolvimento local. É o padrão quando a variável não está definida | Mostra o SQL no log; banco e CORS com defaults locais |
+| `mock` | Quando a API real da WXN não existe | Liga a API simulada em `/mock/wxn`. Combine com `dev`: `dev,mock` |
+| `prod` | Deploy | Sem defaults: `DB_URL`, `DB_USER`, `DB_PASSWORD` e `CORS_ALLOWED_ORIGINS` são obrigatórias, e o backend não sobe se faltar alguma. Sem log de SQL |
+
+### Health check (Actuator)
+
+O backend expõe só o health do Actuator, sem detalhes. Nenhum outro endpoint
+dele (`env`, `beans`, `metrics`...) fica acessível.
+
+```bash
+curl http://localhost:8080/actuator/health/readiness
+# {"status":"UP"}
+```
+
+O readiness inclui o banco: se o PostgreSQL ficar indisponível, ele responde
+`503` com `{"status":"OUT_OF_SERVICE"}`. O `/api/health` continua existindo.
+
 ### API simulada da WXN
 
 As ferramentas do chatbot consultam a API de demandas da WXN, que ainda não
@@ -164,10 +187,10 @@ existe. Para desenvolver, suba o backend com o perfil `mock`, que expõe uma
 versão simulada, com dados fictícios, em `/mock/wxn`:
 
 ```bash
-SPRING_PROFILES_ACTIVE=mock ./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=dev,mock ./mvnw spring-boot:run
 ```
 
-No PowerShell: `$env:SPRING_PROFILES_ACTIVE="mock"; ./mvnw spring-boot:run`.
+No PowerShell: `$env:SPRING_PROFILES_ACTIVE="dev,mock"; ./mvnw spring-boot:run`.
 Dados, protocolos de teste e como usar as ferramentas estão em
 [`docs/integracao-wxn.md`](docs/integracao-wxn.md).
 
@@ -206,10 +229,10 @@ Veja `.env.example` (raiz) e `frontend/.env.example`. Resumo:
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Backend (`application.properties`) | já apontam para o banco local descrito acima — **não precisa configurar nada para rodar localmente** |
 | `SERVER_PORT` | Backend | `8080` |
 | `CORS_ALLOWED_ORIGINS` | Backend | `http://localhost:5173` |
-| `SPRING_PROFILES_ACTIVE` | Backend | vazio; use `mock` para a API simulada da WXN |
+| `SPRING_PROFILES_ACTIVE` | Backend | vazio, que equivale a `dev`; veja [Perfis do backend](#perfis-do-backend) |
 | `WXN_API_BASE_URL` | Backend | `http://localhost:8080/mock/wxn` (o mock do próprio backend) |
 | `VITE_API_URL` | Frontend (`frontend/.env`, se você criar um) | `http://localhost:8080` |
-| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Reservado para etapas futuras | vazio — **não preencher com chave real neste repositório** |
+| `GEMINI_API_KEY` / `GROQ_API_KEY` | Reservado para a LLM (ainda não lido pelo código) | vazio — **não preencher com chave real neste repositório** |
 
 Nenhuma senha ou chave real está (nem deve estar) commitada. Os valores
 acima em `DB_*` são credenciais de desenvolvimento local, não segredos de
