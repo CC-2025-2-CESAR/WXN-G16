@@ -63,12 +63,13 @@ class AtribuicaoConcorrenteIntegracaoTest {
 		transacao.executeWithoutResult(status -> {
 			Chatbot lily = new Chatbot("Lily", "Oi, sou a Lily!");
 			em.persist(lily);
-			Empresa empresa = new Empresa("Empresa Demo");
+			Empresa empresa = new Empresa("Empresa Demo", "12345678000199");
    			em.persist(empresa);
    			empresaId = empresa.getId();
 			Cliente cliente = new Cliente(empresa, "Maria Souza", "81999990001");
 			em.persist(cliente);
-			Conversa conversa = new Conversa(cliente, lily);
+			Conversa conversa = new Conversa(lily);
+			conversa.vincularCliente(cliente);
 			em.persist(conversa);
 			conversa.solicitarAtendente("Quer falar com uma pessoa");
 			for (int i = 1; i <= ATENDENTES; i++) {

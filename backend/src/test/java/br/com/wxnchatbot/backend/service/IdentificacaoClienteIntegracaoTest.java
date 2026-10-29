@@ -10,11 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.wxnchatbot.backend.dto.DadosReconhecimentoCliente;
+import br.com.wxnchatbot.backend.llm.DadosReconhecimentoCliente;
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Empresa;
-import br.com.wxnchatbot.backend.repository.ClienteRepository;
-import br.com.wxnchatbot.backend.repository.EmpresaRepository;
+import br.com.wxnchatbot.backend.repository.ClienteRepositorio;
+import br.com.wxnchatbot.backend.repository.EmpresaRepositorio;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
@@ -26,10 +26,10 @@ class IdentificacaoClienteIntegracaoTest {
     private IdentificacaoCliente servico;
 
     @Autowired
-    private ClienteRepository clienteRepository;
+    private ClienteRepositorio clienteRepository;
 
     @Autowired
-    private EmpresaRepository empresaRepository;
+    private EmpresaRepositorio empresaRepository;
 
     @PersistenceContext
     private EntityManager em;
