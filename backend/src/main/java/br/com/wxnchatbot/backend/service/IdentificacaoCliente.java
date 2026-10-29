@@ -3,35 +3,28 @@ package br.com.wxnchatbot.backend.service;
 import br.com.wxnchatbot.backend.llm.DadosReconhecimentoCliente;
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Empresa;
-import br.com.wxnchatbot.backend.repository.ClienteRepository;
-import br.com.wxnchatbot.backend.repository.EmpresaRepository;
+import br.com.wxnchatbot.backend.repository.ClienteRepositorio;
+import br.com.wxnchatbot.backend.repository.EmpresaRepositorio;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class IdentificacaoCliente {
 
-    private final ClienteRepository clienteRepository;
-    private final EmpresaRepository empresaRepository;
+    private final ClienteRepositorio clienteRepositorio;
+    private final EmpresaRepositorio empresaRepositorio;
 
-    public IdentificacaoCliente(ClienteRepository clienteRepository, EmpresaRepository empresaRepository) {
-        this.clienteRepository = clienteRepository;
-        this.empresaRepository = empresaRepository;
+    public IdentificacaoCliente(ClienteRepositorio clienteRepositorio, EmpresaRepositorio empresaRepositorio) {
+        this.clienteRepositorio = clienteRepositorio;
+        this.empresaRepositorio = empresaRepositorio;
     }
 
     @Transactional
     public Cliente processarReconhecimento(DadosReconhecimentoCliente dados) {
-        
-        Empresa empresa = empresaRepository.findByCnpj(dados.cnpj())
-            .orElseGet(() -> {
-                Empresa novaEmpresa = new Empresa("Empresa a definir", dados.cnpj());
-                return empresaRepository.save(novaEmpresa);
-            });
+        Empresa empresa = empresaRepositorio.findByCnpj(dados.cnpj())
+            .orElseGet(() -> empresaRepositorio.save(new Empresa("Empresa a definir", dados.cnpj())));
 
-        return clienteRepository.findByTelefone(dados.telefone())
-            .orElseGet(() -> {
-                Cliente novoCliente = new Cliente(empresa, dados.nome(), dados.telefone());
-                return clienteRepository.save(novoCliente);
-            });
+        return clienteRepositorio.findByTelefone(dados.telefone())
+            .orElseGet(() -> clienteRepositorio.save(new Cliente(empresa, dados.nome(), dados.telefone())));
     }
 }
