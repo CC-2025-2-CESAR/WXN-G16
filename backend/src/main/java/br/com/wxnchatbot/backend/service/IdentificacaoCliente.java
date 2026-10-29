@@ -1,6 +1,6 @@
 package br.com.wxnchatbot.backend.service;
 
-import br.com.wxnchatbot.backend..DadosReconhecimentoCliente;
+import br.com.wxnchatbot.backend.DadosReconhecimentoCliente;
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Empresa;
 import br.com.wxnchatbot.backend.repository.ClienteRepository;
