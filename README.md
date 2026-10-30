@@ -154,20 +154,28 @@ curl http://localhost:8080/api/health
 # {"status":"ok"}
 ```
 
-Se a resposta acima aparecer, o backend está de pé **e** conectado ao banco
-(se a conexão falhasse, o Spring Boot não conseguiria terminar de subir).
+Se a resposta acima aparecer, o endpoint da API está de pé. Para conferir se
+a aplicação está pronta e consegue acessar o banco, consulte
+`http://localhost:8080/actuator/health/readiness`.
 
 ### API simulada da WXN
 
 As ferramentas do chatbot consultam a API de demandas da WXN, que ainda não
-existe. Para desenvolver, suba o backend com o perfil `mock`, que expõe uma
-versão simulada, com dados fictícios, em `/mock/wxn`:
+existe. O perfil `dev` é o padrão e inclui automaticamente o perfil `mock`,
+que expõe uma versão simulada, com dados fictícios, em `/mock/wxn`. Para
+executar explicitamente:
 
 ```bash
-SPRING_PROFILES_ACTIVE=mock ./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 ```
 
-No PowerShell: `$env:SPRING_PROFILES_ACTIVE="mock"; ./mvnw spring-boot:run`.
+No PowerShell:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE="dev"
+./mvnw spring-boot:run
+```
+
 Dados, protocolos de teste e como usar as ferramentas estão em
 [`docs/integracao-wxn.md`](docs/integracao-wxn.md).
 
@@ -203,11 +211,12 @@ Veja `.env.example` (raiz) e `frontend/.env.example`. Resumo:
 
 | Variável | Onde é usada | Default em dev |
 |---|---|---|
-| `DB_URL`, `DB_USER`, `DB_PASSWORD` | Backend (`application.properties`) | já apontam para o banco local descrito acima — **não precisa configurar nada para rodar localmente** |
+| `DB_URL`, `DB_USER`, `DB_PASSWORD` | Backend (`application-dev.properties` / `application-prod.properties`) | defaults locais em `dev`; obrigatórias em `prod` |
 | `SERVER_PORT` | Backend | `8080` |
 | `CORS_ALLOWED_ORIGINS` | Backend | `http://localhost:5173` |
-| `SPRING_PROFILES_ACTIVE` | Backend | vazio; use `mock` para a API simulada da WXN |
-| `WXN_API_BASE_URL` | Backend | `http://localhost:8080/mock/wxn` (o mock do próprio backend) |
+| `SPRING_PROFILES_ACTIVE` | Backend | `dev` por padrão (inclui o mock); use `prod` no deploy |
+| `WXN_API_BASE_URL` | Backend | URL do mock em `dev`; URL da API configurada em `prod` |
+| Readiness | Backend (Actuator) | `GET /actuator/health/readiness`, inclui verificação do banco |
 | `VITE_API_URL` | Frontend (`frontend/.env`, se você criar um) | `http://localhost:8080` |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Reservado para etapas futuras | vazio — **não preencher com chave real neste repositório** |
 
