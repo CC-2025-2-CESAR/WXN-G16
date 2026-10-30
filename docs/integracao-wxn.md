@@ -5,19 +5,24 @@ Cobre as tarefas T3.1.1, T3.1.2, T3.1.3 e T2.3.1. O contrato está em
 
 A WXN ainda não entregou a API real de demandas. Até lá, o backend traz uma
 **implementação simulada com dados fictícios**, que só existe com o perfil
-`mock`. Quando a API real chegar, troca-se a base URL e a autenticação; o
-restante do código não muda.
+`mock`. O perfil `dev` ativa `mock` automaticamente. Quando a API real chegar,
+troca-se a base URL e a autenticação; o restante do código não muda.
 
 ## Rodando com o mock
 
 ```bash
-SPRING_PROFILES_ACTIVE=mock ./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 ```
 
-No PowerShell: `$env:SPRING_PROFILES_ACTIVE="mock"; ./mvnw spring-boot:run`.
-Sem o perfil, o `DemandaGateway` aponta para um endereço que não existe e todas
-as consultas viram "serviço indisponível" (de propósito: o bot nunca diz que um
-protocolo não existe quando, na verdade, a API é que não está lá).
+No PowerShell:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE="dev"
+./mvnw spring-boot:run
+```
+
+Em `prod`, o perfil `mock` não é ativado. Nesse ambiente,
+`WXN_API_BASE_URL` deve apontar para a API configurada para produção.
 
 O perfil `mock` expõe endpoints **sem autenticação** com dados fictícios: use só
 em desenvolvimento e na demonstração da PoC, nunca com dados reais de clientes.
