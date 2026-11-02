@@ -28,6 +28,10 @@ public class Conversa {
 
 	@Id
 	private UUID id = UUID.randomUUID();
+	
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "empresa_id", nullable = false)
+	private Empresa empresa;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "cliente_id", nullable = false)
@@ -63,6 +67,7 @@ public class Conversa {
 
 	public Conversa(Cliente cliente, Chatbot chatbot) {
 		this.cliente = Objects.requireNonNull(cliente, "cliente é obrigatório");
+		this.empresa = this.cliente.getEmpresa();
 		this.chatbot = Objects.requireNonNull(chatbot, "chatbot é obrigatório");
 		if (!chatbot.isAtivo()) {
 			throw new IllegalStateException("O chatbot está desativado");
@@ -165,5 +170,9 @@ public class Conversa {
 
 	public Optional<Instant> getEncerradaEm() {
 		return Optional.ofNullable(encerradaEm);
+	}
+	
+	public Empresa getEmpresa() {
+		return empresa;
 	}
 }
