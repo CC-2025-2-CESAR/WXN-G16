@@ -6,12 +6,14 @@ Registro do que foi medido ou confirmado para decidir a LLM da Lily (decisão D5
 
 | Modelo | Limite por minuto | Limite por dia | Observação |
 |---|---|---|---|
-| gemini-3.5-flash-lite | pendente (copiar do painel) | pendente (copiar do painel) | 25 perguntas seguidas, pausa de 4 s, sem nenhum erro de cota |
-| gemini-3.8-flash | pendente (copiar do painel) | pendente (copiar do painel) | as 10 primeiras chamadas passaram; da 11ª em diante (36ª no total) as 15 últimas deram erro 429 de cota excedida |
+| gemini-3.5-flash-lite | 15 | 500 | 250 mil tokens por minuto. Durante o teste chegou a 14 de 15 por minuto e a 44 de 500 no dia |
+| gemini-3.8-flash | 5 | 20 | 250 mil tokens por minuto. O painel marcou 22 de 20 no dia, ou seja, o limite diário estourou |
 
-- Os números exatos ficam em https://ai.dev/rate-limit, com a conta que criou a chave. A mensagem do 429 não os traz.
+- Fonte: página "Limite de taxa" do AI Studio, projeto do plano gratuito, em 01/11/2026 (https://ai.dev/rate-limit).
+- O erro 429 do `gemini-3.8-flash` é o limite diário de 20 requisições. Cada pergunta que usa ferramenta gasta 2 requisições (o pedido e a resposta depois da ferramenta), então as 10 primeiras perguntas já consumiram as 20.
+- No plano grátis o `gemini-3.8-flash` só atende cerca de 10 perguntas com ferramenta por dia. O `gemini-3.5-flash-lite` aguenta 500 requisições por dia, mas com 15 por minuto, e cada turno com ferramenta gasta 2, o que dá cerca de 7 turnos por minuto para o grupo inteiro.
 - A primeira conta testada recebeu 403 ("free tier is not available for this project") em todas as chamadas. A elegibilidade é por projeto do Google Cloud, e uma chave criada em outra conta funcionou no plano grátis.
-- Plano grátis pede cartão de crédito? não confirmado
+- Plano grátis pede cartão de crédito? Não. A chave da segunda conta foi criada e usada sem cartão.
 
 ## Teste de fumaça com tool calling
 
@@ -27,14 +29,13 @@ Registro do que foi medido ou confirmado para decidir a LLM da Lily (decisão D5
 | gemini-3.8-flash | 15/25 (429) | 10/25 | 123 s | 208 s | 208 s | 941 / 106 |
 
 - `gemini-3.5-flash-lite`: o português das respostas ficou correto e curto numa leitura rápida (a avaliação do tom é humana e fica para o grupo). Só 2 respostas passaram de 5 s (10 s e 14 s). Nas consultas de status ele devolveu o texto da ferramenta quase cru, porque o prompt manda repetir somente o que a ferramenta devolver.
-- `gemini-3.8-flash`: respostas mais naturais, mas em texto com `**negrito**` e listas, que o WhatsApp não mostra igual. Cada resposta levou de 49 s a 208 s. Não dá para saber se isso é o tempo do modelo ou novas tentativas por limite de cota, porque o experimento não separa as duas coisas.
+- `gemini-3.8-flash`: respostas mais naturais, mas em texto com `**negrito**` e listas, que o WhatsApp não mostra igual. Cada resposta levou de 49 s a 208 s. O painel mostra poucas requisições por minuto nessa fase, então não foi o limite por minuto, e registrou alguns erros 503 (serviço indisponível). A causa da lentidão não foi confirmada.
 - Das 4 falhas nas checagens automáticas do `gemini-3.5-flash-lite`, 3 (#11, #12 e #14) são limitações da checagem por palavras: ele pediu a confirmação com outras palavras, ou ofereceu um atendente em vez de abrir o chamado. A #9 é real: com o protocolo incompleto ("e a 0001, já terminou?") ele completou sozinho para WXN-2026-0001 e informou um status. O `gemini-3.8-flash` pediu o protocolo completo nesse caso.
 
 ## Decisão
 
-pendente do grupo (D5). Proposta da P5, para confirmar com a P3 e os orientadores: seguir com o `gemini-3.5-flash-lite`, que foi rápido e sem erros, e deixar o `gemini-3.8-flash` de fora por enquanto. O prompt da Lily precisa pedir uma frase natural usando só os dados devolvidos, e exigir o protocolo completo antes de consultar.
+pendente do grupo (D5). Proposta da P5, para confirmar com a P3 e os orientadores: seguir com o `gemini-3.5-flash-lite`, que foi rápido e sem erros, e deixar o `gemini-3.8-flash` de fora por enquanto: no plano grátis ele só permite 20 requisições por dia e respondeu em dois minutos. O prompt da Lily precisa pedir uma frase natural usando só os dados devolvidos, e exigir o protocolo completo antes de consultar.
 
 ## Pendências
 
-- Copiar do painel do AI Studio os limites por minuto e por dia dos dois modelos e confirmar se o plano grátis pede cartão (P5)
 - Medir o português com mais perguntas e conversas de vários turnos (IA-07)
