@@ -29,9 +29,12 @@ import br.com.wxnchatbot.backend.model.StatusTicket;
 import br.com.wxnchatbot.backend.model.TipoRemetente;
 import br.com.wxnchatbot.backend.repository.AtendenteRepositorio;
 import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
+import br.com.wxnchatbot.backend.model.Empresa;
 
 @ExtendWith(MockitoExtension.class)
 class FilaConversasServicoTest {
+	
+	private static final Empresa EMPRESA = new Empresa("Empresa Demo");
 
 	@Mock
 	private ConversaRepositorio conversas;
@@ -47,7 +50,7 @@ class FilaConversasServicoTest {
 	}
 
 	private Conversa conversaComChatbot(String nome, String telefone) {
-		return new Conversa(new Cliente(nome, telefone), new Chatbot("Lily", "Oi, sou a Lily!"));
+		return new Conversa(new Cliente(EMPRESA, nome, telefone), new Chatbot("Lily", "Oi, sou a Lily!"));
 	}
 
 	private Conversa conversaNaFila(String nome, String telefone, String motivo) {

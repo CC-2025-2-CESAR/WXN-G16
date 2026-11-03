@@ -34,6 +34,7 @@ import br.com.wxnchatbot.backend.model.StatusTicket;
 import br.com.wxnchatbot.backend.model.Ticket;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import br.com.wxnchatbot.backend.model.Empresa;
 
 @SpringBootTest
 class AtribuicaoConcorrenteIntegracaoTest {
@@ -51,6 +52,7 @@ class AtribuicaoConcorrenteIntegracaoTest {
 
 	private TransactionTemplate transacao;
 	private UUID chatbotId;
+	private UUID empresaId;
 	private UUID clienteId;
 	private UUID conversaId;
 	private final List<UUID> atendentesIds = new ArrayList<>();
@@ -61,7 +63,10 @@ class AtribuicaoConcorrenteIntegracaoTest {
 		transacao.executeWithoutResult(status -> {
 			Chatbot lily = new Chatbot("Lily", "Oi, sou a Lily!");
 			em.persist(lily);
-			Cliente cliente = new Cliente("Maria Souza", "81999990001");
+			Empresa empresa = new Empresa("Empresa Demo");
+   			em.persist(empresa);
+   			empresaId = empresa.getId();
+			Cliente cliente = new Cliente(empresa, "Maria Souza", "81999990001");
 			em.persist(cliente);
 			Conversa conversa = new Conversa(cliente, lily);
 			em.persist(conversa);
@@ -83,6 +88,7 @@ class AtribuicaoConcorrenteIntegracaoTest {
 			remover(Conversa.class, conversaId);
 			atendentesIds.forEach(id -> remover(Atendente.class, id));
 			remover(Cliente.class, clienteId);
+			remover(Empresa.class, empresaId);
 			remover(Chatbot.class, chatbotId);
 		});
 	}

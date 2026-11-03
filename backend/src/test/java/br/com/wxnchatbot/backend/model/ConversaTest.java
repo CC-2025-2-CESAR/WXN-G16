@@ -11,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ConversaTest {
+	
+	private static final Empresa EMPRESA = new Empresa("Empresa Demo");
 
 	private Cliente cliente;
 	private Chatbot lily;
@@ -19,7 +21,7 @@ class ConversaTest {
 
 	@BeforeEach
 	void preparar() {
-		cliente = new Cliente("Maria Souza", "+55 (81) 99999-1234");
+		cliente = new Cliente(EMPRESA, "Maria Souza", "+55 (81) 99999-1234");
 		lily = new Chatbot("Lily", "Oi, sou a Lily, assistente virtual da WXN!");
 		atendente = new Atendente("Carlos Lima", "carlos@wxn.com.br");
 		conversa = new Conversa(cliente, lily);
@@ -76,7 +78,7 @@ class ConversaTest {
 
 	@Test
 	void clienteDeOutraConversaNaoPodeEnviarMensagem() {
-		Cliente intruso = new Cliente("Joao Pedro", "81988887777");
+		Cliente intruso = new Cliente(EMPRESA, "Joao Pedro", "81988887777");
 
 		assertThrows(IllegalStateException.class, () -> conversa.adicionarMensagem(intruso, "Oi"));
 	}

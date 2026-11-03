@@ -28,6 +28,10 @@ public class Conversa {
 
 	@Id
 	private UUID id = UUID.randomUUID();
+	
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "empresa_id", nullable = false)
+	private Empresa empresa;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "cliente_id", nullable = false)
@@ -63,6 +67,7 @@ public class Conversa {
 
 	public Conversa(Cliente cliente, Chatbot chatbot) {
 		this.cliente = Objects.requireNonNull(cliente, "cliente é obrigatório");
+		this.empresa = this.cliente.getEmpresa();
 		this.chatbot = Objects.requireNonNull(chatbot, "chatbot é obrigatório");
 		if (!chatbot.isAtivo()) {
 			throw new IllegalStateException("O chatbot está desativado");
@@ -83,10 +88,14 @@ public class Conversa {
 	}
 
 	public Ticket solicitarAtendente(String motivo) {
+		return solicitarAtendente(motivo, NivelUrgencia.BAIXA, null);
+	}
+
+	public Ticket solicitarAtendente(String motivo, NivelUrgencia urgencia, String resumo) {
 		if (status != StatusConversa.COM_CHATBOT) {
 			throw new IllegalStateException("Só é possível solicitar um atendente enquanto a conversa está com o chatbot");
 		}
-		this.ticket = new Ticket(this, motivo);
+		this.ticket = new Ticket(this, motivo, urgencia, resumo);
 		this.status = StatusConversa.AGUARDANDO_ATENDENTE;
 		return ticket;
 	}
@@ -165,5 +174,9 @@ public class Conversa {
 
 	public Optional<Instant> getEncerradaEm() {
 		return Optional.ofNullable(encerradaEm);
+	}
+	
+	public Empresa getEmpresa() {
+		return empresa;
 	}
 }
