@@ -1,0 +1,67 @@
+package br.com.wxnchatbot.backend.controller;
+
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import br.com.wxnchatbot.backend.service.FilaConversasServico;
+import br.com.wxnchatbot.backend.service.RecursoNaoEncontradoException;
+
+@WebMvcTest(ConversaController.class)
+class ConversaControllerTest {
+
+	private static final UUID CONVERSA = UUID.fromString("11111111-1111-1111-1111-111111111111");
+
+	@Autowired
+	private MockMvc mvc;
+
+	@MockitoBean
+	private FilaConversasServico servico;
+
+	@Test
+	void encerrarDevolve204SemCorpoEChamaOServico() throws Exception {
+		mvc.perform(post("/api/conversas/{id}/encerrar", CONVERSA))
+				.andExpect(status().isNoContent())
+				.andExpect(content().string(""));
+
+		verify(servico).encerrar(CONVERSA);
+	}
+
+	@Test
+	void encerrarConversaInexistenteDevolve404() throws Exception {
+		doThrow(new RecursoNaoEncontradoException("Conversa", CONVERSA)).when(servico).encerrar(CONVERSA);
+
+		mvc.perform(post("/api/conversas/{id}/encerrar", CONVERSA))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.status").value(404));
+	}
+
+	@Test
+	void encerrarConversaJaEncerradaDevolve409() throws Exception {
+		doThrow(new IllegalStateException("A conversa já está encerrada")).when(servico).encerrar(CONVERSA);
+
+		mvc.perform(post("/api/conversas/{id}/encerrar", CONVERSA))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.detail").value("A conversa já está encerrada"));
+	}
+
+	@Test
+	void encerrarComIdentificadorMalformadoDevolve400() throws Exception {
+		mvc.perform(post("/api/conversas/{id}/encerrar", "nao-e-uuid"))
+				.andExpect(status().isBadRequest());
+
+		verifyNoInteractions(servico);
+	}
+}
