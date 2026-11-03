@@ -88,10 +88,14 @@ public class Conversa {
 	}
 
 	public Ticket solicitarAtendente(String motivo) {
+		return solicitarAtendente(motivo, NivelUrgencia.BAIXA, null);
+	}
+
+	public Ticket solicitarAtendente(String motivo, NivelUrgencia urgencia, String resumo) {
 		if (status != StatusConversa.COM_CHATBOT) {
 			throw new IllegalStateException("Só é possível solicitar um atendente enquanto a conversa está com o chatbot");
 		}
-		this.ticket = new Ticket(this, motivo);
+		this.ticket = new Ticket(this, motivo, urgencia, resumo);
 		this.status = StatusConversa.AGUARDANDO_ATENDENTE;
 		return ticket;
 	}
