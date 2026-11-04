@@ -295,7 +295,7 @@ class FilaConversasServicoTest {
 	@Test
 	void encerrarMarcaComoEncerradaResolveOTicketESalva() {
 		Conversa conversa = conversaNaFila("Maria Souza", "81999990001", "Quer falar com uma pessoa");
-		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
+		when(conversas.buscarPorIdParaAtualizar(conversa.getId())).thenReturn(Optional.of(conversa));
 
 		servico.encerrar(conversa.getId());
 
@@ -306,9 +306,19 @@ class FilaConversasServicoTest {
 	}
 
 	@Test
+	void encerrarBuscaAConversaComBloqueioParaNaoCompetirComQuemAssume() {
+		Conversa conversa = conversaNaFila("Maria Souza", "81999990001", "Quer falar com uma pessoa");
+		when(conversas.buscarPorIdParaAtualizar(conversa.getId())).thenReturn(Optional.of(conversa));
+
+		servico.encerrar(conversa.getId());
+
+		verify(conversas, never()).findById(any());
+	}
+
+	@Test
 	void encerrarConversaSemTicketTambemFunciona() {
 		Conversa conversa = conversaComChatbot("Maria Souza", "81999990001");
-		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
+		when(conversas.buscarPorIdParaAtualizar(conversa.getId())).thenReturn(Optional.of(conversa));
 
 		servico.encerrar(conversa.getId());
 
@@ -320,7 +330,7 @@ class FilaConversasServicoTest {
 	void encerrarConversaJaEncerradaDaErroENaoSalvaDeNovo() {
 		Conversa conversa = conversaComChatbot("Maria Souza", "81999990001");
 		conversa.encerrar();
-		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
+		when(conversas.buscarPorIdParaAtualizar(conversa.getId())).thenReturn(Optional.of(conversa));
 
 		assertThrows(IllegalStateException.class, () -> servico.encerrar(conversa.getId()));
 
@@ -330,8 +340,11 @@ class FilaConversasServicoTest {
 	@Test
 	void encerrarConversaInexistenteDaNaoEncontrado() {
 		UUID id = UUID.randomUUID();
-		when(conversas.findById(id)).thenReturn(Optional.empty());
+		when(conversas.buscarPorIdParaAtualizar(id)).thenReturn(Optional.empty());
 
-		assertThrows(RecursoNaoEncontradoException.class, () -> servico.encerrar(id));
+		RecursoNaoEncontradoException erro = assertThrows(RecursoNaoEncontradoException.class,
+				() -> servico.encerrar(id));
+
+		assertTrue(erro.getMessage().contains("Conversa"));
 	}
 }

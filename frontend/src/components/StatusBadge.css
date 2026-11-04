@@ -1,17 +1,17 @@
 .status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.9rem;
+  gap: 0.45rem;
+  padding: 0.3rem 0.65rem;
   border-radius: 999px;
-  font-size: 0.9rem;
+  font-size: 0.72rem;
   font-weight: 500;
   border: 1px solid transparent;
 }
 
 .status-badge__dot {
-  width: 0.55rem;
-  height: 0.55rem;
+  width: 0.45rem;
+  height: 0.45rem;
   border-radius: 50%;
   background: currentColor;
 }

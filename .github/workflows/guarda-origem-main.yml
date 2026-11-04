@@ -1,0 +1,27 @@
+name: Guarda da main
+
+# Só a develop pode abrir PR para a main. O ruleset da main exige o check
+# "Origem do PR para a main"; produção só reflete a main (ver deploy-backend.yml).
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  origem:
+    name: Origem do PR para a main
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Conferir a branch de origem
+        env:
+          ORIGEM: ${{ github.head_ref }}
+        run: |
+          if [ "$ORIGEM" != "develop" ]; then
+            echo "::error::PRs para a main só podem vir da develop (este veio de '$ORIGEM'). Abra o PR para a develop e promova depois."
+            exit 1
+          fi
+          echo "Origem ok: develop"
