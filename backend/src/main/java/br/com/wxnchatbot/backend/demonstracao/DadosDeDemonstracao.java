@@ -111,7 +111,7 @@ public class DadosDeDemonstracao implements CommandLineRunner {
             return;
         }
         Instant agora = Instant.now();
-        Empresa empresa = persistir(new Empresa(NOME_EMPRESA, "00.000.000/0001-00"));
+        Empresa empresa = persistir(new Empresa(NOME_EMPRESA, "00000000000100"));
         Chatbot lily = persistir(new Chatbot("Lily", "Oi, eu sou a Lily, assistente virtual da WXN. Como posso ajudar?"));
         Atendente ana = persistir(new Atendente("Ana Martins", "ana.martins" + DOMINIO_EMAIL));
         persistir(new Atendente("Paulo Mendes", "paulo.mendes" + DOMINIO_EMAIL));
