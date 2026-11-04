@@ -15,7 +15,9 @@ on:
 
 jobs:
   build-and-deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
@@ -32,7 +34,24 @@ jobs:
         run: ./mvnw clean package -DskipTests
 
       - uses: azure/webapps-deploy@v3
+        id: deploy
         with:
           app-name: wxn-g16-backend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: backend/target/*.jar
+
+      - name: Esperar o backend responder
+        env:
+          URL: ${{ steps.deploy.outputs.webapp-url }}
+        run: |
+          URL="${URL:-https://wxn-g16-backend.azurewebsites.net}"
+          for i in $(seq 1 16); do
+            codigo=$(curl -s -o /dev/null -m 20 -w "%{http_code}" "$URL/api/health" || true)
+            echo "tentativa $i: HTTP $codigo"
+            if [ "$codigo" = "200" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::O backend não respondeu 200 em /api/health depois do deploy. Ver docs/deploy.md (Quando o site cai)."
+          exit 1
