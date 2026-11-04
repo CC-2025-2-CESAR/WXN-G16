@@ -29,7 +29,7 @@ import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
 @ExtendWith(MockitoExtension.class)
 class TicketServicoTest {
 
-    private static final Empresa EMPRESA = new Empresa("Empresa Demo");
+    private static final Empresa EMPRESA = new Empresa("Empresa Demo", "12345678000199");
 
     @Mock
     private ConversaRepositorio conversas;
@@ -42,10 +42,11 @@ class TicketServicoTest {
     }
 
     private Conversa conversaComMensagens(String... textosDoCliente) {
-        Conversa conversa = new Conversa(new Cliente(EMPRESA, "Maria Souza", "81999990001"),
-                new Chatbot("Lily", "Oi, sou a Lily!"));
+        Conversa conversa = new Conversa(new Chatbot("Lily", "Oi, sou a Lily!"));
+        conversa.vincularCliente(new Cliente(EMPRESA, "Maria Souza", "81999990001"));
+        
         for (String texto : textosDoCliente) {
-            conversa.adicionarMensagem(conversa.getCliente(), texto);
+            conversa.adicionarMensagem(conversa.getCliente().orElseThrow(), texto);
         }
         when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
         return conversa;
@@ -84,8 +85,8 @@ class TicketServicoTest {
     void resumoTrazSoAsTresUltimasMensagensDoCliente() {
         Conversa conversa = conversaComMensagens("Bom dia", "A nota nao sai");
         conversa.adicionarMensagem(conversa.getChatbot(), "Vou verificar");
-        conversa.adicionarMensagem(conversa.getCliente(), "Ja tentei de novo");
-        conversa.adicionarMensagem(conversa.getCliente(), "Preciso de ajuda");
+        conversa.adicionarMensagem(conversa.getCliente().orElseThrow(), "Ja tentei de novo");
+        conversa.adicionarMensagem(conversa.getCliente().orElseThrow(), "Preciso de ajuda");
 
         Ticket ticket = servico.abrir(conversa.getId(), "Pediu atendimento humano");
 
