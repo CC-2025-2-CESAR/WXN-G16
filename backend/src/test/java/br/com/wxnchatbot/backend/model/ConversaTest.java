@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 class ConversaTest {
 	
-	private static final Empresa EMPRESA = new Empresa("Empresa Demo");
+	private static final Empresa EMPRESA = new Empresa("Empresa Demo", "12345678000199");
 
 	private Cliente cliente;
 	private Chatbot lily;
@@ -24,7 +24,8 @@ class ConversaTest {
 		cliente = new Cliente(EMPRESA, "Maria Souza", "+55 (81) 99999-1234");
 		lily = new Chatbot("Lily", "Oi, sou a Lily, assistente virtual da WXN!");
 		atendente = new Atendente("Carlos Lima", "carlos@wxn.com.br");
-		conversa = new Conversa(cliente, lily);
+		conversa = new Conversa(lily);
+		conversa.vincularCliente(cliente);
 	}
 
 	@Test
@@ -139,7 +140,7 @@ class ConversaTest {
 	void chatbotDesativadoNaoIniciaConversa() {
 		lily.desativar();
 
-		assertThrows(IllegalStateException.class, () -> new Conversa(cliente, lily));
+		assertThrows(IllegalStateException.class, () -> new Conversa(lily));
 		assertFalse(lily.isAtivo());
 	}
 

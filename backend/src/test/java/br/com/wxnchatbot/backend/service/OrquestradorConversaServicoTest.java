@@ -39,7 +39,7 @@ import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
 @ExtendWith(MockitoExtension.class)
 class OrquestradorConversaServicoTest {
 
-	private static final Empresa EMPRESA = new Empresa("Empresa Demo");
+	private static final Empresa EMPRESA = new Empresa("Empresa Demo", "12345678000199");
 
 	@Mock
 	private ConversaRepositorio conversas;
@@ -58,7 +58,9 @@ class OrquestradorConversaServicoTest {
 	}
 
 	private Conversa conversaComChatbot() {
-		return new Conversa(new Cliente(EMPRESA, "Maria Souza", "81999990001"), new Chatbot("Lily", "Oi, sou a Lily!"));
+		Conversa conversa = new Conversa(new Chatbot("Lily", "Oi, sou a Lily!"));
+		conversa.vincularCliente(new Cliente(EMPRESA, "Maria Souza", "81999990001"));
+		return conversa;
 	}
 
 	@Test
@@ -96,7 +98,7 @@ class OrquestradorConversaServicoTest {
 	void historicoEnviadoNaoPassaDeVinteMensagens() {
 		Conversa conversa = conversaComChatbot();
 		for (int i = 1; i <= 25; i++) {
-			conversa.adicionarMensagem(conversa.getCliente(), "Mensagem " + i);
+			conversa.adicionarMensagem(conversa.getCliente().orElseThrow(), "Mensagem " + i);
 		}
 		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
 		when(llm.responder(any(), any())).thenReturn("ok");
@@ -111,7 +113,7 @@ class OrquestradorConversaServicoTest {
 	@Test
 	void conversaNaFilaGuardaSoAPerguntaENaoChamaALlm() {
 		Conversa conversa = conversaComChatbot();
-		conversa.adicionarMensagem(conversa.getCliente(), "Quero falar com uma pessoa");
+		conversa.adicionarMensagem(conversa.getCliente().orElseThrow(), "Quero falar com uma pessoa");
 		conversa.solicitarAtendente("Pediu atendimento humano");
 		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
 

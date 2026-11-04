@@ -59,7 +59,7 @@ class AssumirEEncerrarConcorrentesIntegracaoTest {
 		transacao.executeWithoutResult(status -> {
 			Chatbot lily = new Chatbot("Lily", "Oi, sou a Lily!");
 			em.persist(lily);
-			Empresa empresa = new Empresa("Empresa Demo");
+			Empresa empresa = new Empresa("Empresa Demo", "12345678000199");
 			em.persist(empresa);
 			Cliente cliente = new Cliente(empresa, "Maria Souza", "81999990001");
 			em.persist(cliente);
@@ -92,7 +92,8 @@ class AssumirEEncerrarConcorrentesIntegracaoTest {
 
 	private UUID novaConversaNaFila() {
 		return transacao.execute(status -> {
-			Conversa conversa = new Conversa(em.find(Cliente.class, clienteId), em.find(Chatbot.class, chatbotId));
+			Conversa conversa = new Conversa(em.find(Chatbot.class, chatbotId));
+			conversa.vincularCliente(em.find(Cliente.class, clienteId));
 			em.persist(conversa);
 			conversa.solicitarAtendente("Quer falar com uma pessoa");
 			conversasIds.add(conversa.getId());

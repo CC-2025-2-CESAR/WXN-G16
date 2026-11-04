@@ -82,7 +82,7 @@ class FilaConversasApiIntegracaoTest {
 	void criarDados() {
 		transacao = new TransactionTemplate(transacoes);
 		transacao.executeWithoutResult(status -> {
-			Empresa empresa = new Empresa("Empresa Demo");
+			Empresa empresa = new Empresa("Empresa Demo", "12345678000199");
 			em.persist(empresa);
 			empresaId = empresa.getId();
 			Chatbot lily = new Chatbot("Lily", "Oi, sou a Lily!");
@@ -117,7 +117,8 @@ class FilaConversasApiIntegracaoTest {
 		Cliente cliente = new Cliente(empresa, nome, telefone);
 		em.persist(cliente);
 		clientesIds.add(cliente.getId());
-		Conversa conversa = new Conversa(cliente, lily);
+		Conversa conversa = new Conversa(lily);
+		conversa.vincularCliente(cliente);
 		em.persist(conversa);
 		lily.saudar(conversa);
 		esperar();

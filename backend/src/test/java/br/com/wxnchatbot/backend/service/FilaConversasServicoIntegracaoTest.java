@@ -47,7 +47,7 @@ class FilaConversasServicoIntegracaoTest {
 
 	@BeforeEach
 	void criarChatbot() {
-		empresa = new Empresa("Empresa Demo");
+		empresa = new Empresa("Empresa Demo", "12345678000199");
    		em.persist(empresa);
 		lily = new Chatbot("Lily", "Oi, sou a Lily!");
 		em.persist(lily);
@@ -56,7 +56,8 @@ class FilaConversasServicoIntegracaoTest {
 	private Conversa novaConversa(String nome, String telefone) {
 		Cliente cliente = new Cliente(empresa, nome, telefone);
 		em.persist(cliente);
-		Conversa conversa = new Conversa(cliente, lily);
+		Conversa conversa = new Conversa(lily);
+		conversa.vincularCliente(cliente);
 		em.persist(conversa);
 		return conversa;
 	}
@@ -150,9 +151,9 @@ class FilaConversasServicoIntegracaoTest {
 		Conversa conversa = novaConversa("Maria Souza", "81999990001");
 		lily.saudar(conversa);
 		esperar();
-		conversa.adicionarMensagem(conversa.getCliente(), "Preciso de ajuda");
+		conversa.adicionarMensagem(conversa.getCliente().orElseThrow(), "Preciso de ajuda");
 		esperar();
-		conversa.adicionarMensagem(conversa.getCliente(), "Podem me ligar?");
+		conversa.adicionarMensagem(conversa.getCliente().orElseThrow(), "Podem me ligar?");
 		servico.solicitarAtendente(conversa.getId(), "Quer falar com uma pessoa");
 		sincronizar();
 
@@ -252,13 +253,13 @@ class FilaConversasServicoIntegracaoTest {
 		Conversa conversa = novaConversa("Maria Souza", "81999990001");
 		lily.saudar(conversa);
 		esperar();
-		conversa.adicionarMensagem(conversa.getCliente(), "Preciso de ajuda");
+		conversa.adicionarMensagem(conversa.getCliente().orElseThrow(), "Preciso de ajuda");
 		sincronizar();
 
 		Conversa recarregada = conversas.findById(conversa.getId()).orElseThrow();
 
-		assertEquals("Maria Souza", recarregada.getCliente().getNome());
-		assertEquals("81999990001", recarregada.getCliente().getTelefone());
+		assertEquals("Maria Souza", recarregada.getCliente().orElseThrow().getNome());
+		assertEquals("81999990001", recarregada.getCliente().orElseThrow().getTelefone());
 		assertEquals("Lily", recarregada.getChatbot().getNome());
 		assertEquals(StatusConversa.COM_CHATBOT, recarregada.getStatus());
 		assertEquals(2, recarregada.getMensagens().size());

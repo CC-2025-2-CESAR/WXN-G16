@@ -1,0 +1,2 @@
+ALTER TABLE conversa ALTER COLUMN empresa_id DROP NOT NULL;
+ALTER TABLE conversa ALTER COLUMN cliente_id DROP NOT NULL;

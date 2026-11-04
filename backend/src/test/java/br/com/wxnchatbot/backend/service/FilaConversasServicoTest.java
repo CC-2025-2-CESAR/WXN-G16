@@ -34,7 +34,7 @@ import br.com.wxnchatbot.backend.model.Empresa;
 @ExtendWith(MockitoExtension.class)
 class FilaConversasServicoTest {
 	
-	private static final Empresa EMPRESA = new Empresa("Empresa Demo");
+	private static final Empresa EMPRESA = new Empresa("Empresa Demo", "12345678000199");
 
 	@Mock
 	private ConversaRepositorio conversas;
@@ -50,12 +50,14 @@ class FilaConversasServicoTest {
 	}
 
 	private Conversa conversaComChatbot(String nome, String telefone) {
-		return new Conversa(new Cliente(EMPRESA, nome, telefone), new Chatbot("Lily", "Oi, sou a Lily!"));
+		Conversa conversa = new Conversa(new Chatbot("Lily", "Oi, sou a Lily!"));
+		conversa.vincularCliente(new Cliente(EMPRESA, nome, telefone));
+		return conversa;
 	}
 
 	private Conversa conversaNaFila(String nome, String telefone, String motivo) {
 		Conversa conversa = conversaComChatbot(nome, telefone);
-		conversa.adicionarMensagem(conversa.getCliente(), "Preciso de ajuda");
+		conversa.adicionarMensagem(conversa.getCliente().orElseThrow(), "Preciso de ajuda");
 		conversa.solicitarAtendente(motivo);
 		return conversa;
 	}
@@ -94,7 +96,7 @@ class FilaConversasServicoTest {
 	void abrirConversaDaFilaMostraClienteMotivoEMensagensNaOrdem() {
 		Conversa conversa = conversaComChatbot("Maria Souza", "81999990001");
 		conversa.getChatbot().saudar(conversa);
-		conversa.adicionarMensagem(conversa.getCliente(), "Preciso de ajuda");
+		conversa.adicionarMensagem(conversa.getCliente().orElseThrow(), "Preciso de ajuda");
 		conversa.solicitarAtendente("Quer falar com uma pessoa");
 		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
 

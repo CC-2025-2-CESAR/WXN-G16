@@ -12,8 +12,10 @@ import br.com.wxnchatbot.backend.llm.LlmClient;
 import br.com.wxnchatbot.backend.llm.LlmIndisponivelException;
 import br.com.wxnchatbot.backend.llm.MensagemLlm;
 import br.com.wxnchatbot.backend.llm.PromptDaLily;
+import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
 import br.com.wxnchatbot.backend.model.Mensagem;
+import br.com.wxnchatbot.backend.model.Remetente;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.model.TipoRemetente;
 import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
@@ -38,7 +40,11 @@ public class OrquestradorConversaServico {
 	public ResultadoTurno processarTurno(UUID conversaId, String texto) {
 		Conversa conversa = conversaRepositorio.findById(conversaId)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Conversa", conversaId));
-		conversa.adicionarMensagem(conversa.getCliente(), texto);
+
+		// Desempacota o cliente caso exista; se nulo, passa null (o método podeEnviar da Conversa aceita cliente nulo no início)
+		Remetente remetenteCliente = conversa.getCliente().orElse(null);
+		conversa.adicionarMensagem(remetenteCliente, texto);
+
 		String resposta = null;
 		if (conversa.getStatus() == StatusConversa.COM_CHATBOT) {
 			resposta = gerarResposta(conversa);

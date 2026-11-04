@@ -18,8 +18,11 @@ public record ConversaNaFila(
 	static ConversaNaFila de(Conversa conversa, int posicao) {
 		Ticket ticket = conversa.getTicket()
 				.orElseThrow(() -> new IllegalStateException("Conversa na fila sem ticket: " + conversa.getId()));
-		Cliente cliente = conversa.getCliente();
-		return new ConversaNaFila(posicao, conversa.getId(), cliente.getNome(), cliente.getTelefone(),
+		
+		String nome = conversa.getCliente().map(Cliente::getNome).orElse("Não identificado");
+		String telefone = conversa.getCliente().map(Cliente::getTelefone).orElse("Não informado");
+
+		return new ConversaNaFila(posicao, conversa.getId(), nome, telefone,
 				ticket.getMotivo(), ticket.getAbertoEm());
 	}
 }
