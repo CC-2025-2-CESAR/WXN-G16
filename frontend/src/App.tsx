@@ -1,7 +1,6 @@
-import { Dashboard } from './pages/Dashboard';
+import DashboardApp from './dashboard/App'
+import './dashboard/styles.css'
 
-function App() {
-  return <Dashboard />;
+export default function App() {
+  return <DashboardApp />
 }
-
-export default App;

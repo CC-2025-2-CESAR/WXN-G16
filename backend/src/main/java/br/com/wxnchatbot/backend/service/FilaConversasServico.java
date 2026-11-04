@@ -63,7 +63,8 @@ public class FilaConversasServico {
 
 	@Transactional
 	public void encerrar(UUID conversaId) {
-		Conversa conversa = buscarConversa(conversaId);
+		Conversa conversa = conversaRepositorio.buscarPorIdParaAtualizar(conversaId)
+				.orElseThrow(() -> new RecursoNaoEncontradoException("Conversa", conversaId));
 		conversa.encerrar();
 		conversaRepositorio.save(conversa);
 	}
