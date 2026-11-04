@@ -37,6 +37,13 @@ public class Ticket {
 	@Column(name = "status", nullable = false)
 	private StatusTicket status = StatusTicket.ABERTO;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "urgencia", nullable = false)
+	private NivelUrgencia urgencia;
+
+	@Column(name = "resumo", columnDefinition = "TEXT")
+	private String resumo;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "atendente_id")
 	private Atendente atendente;
@@ -47,9 +54,11 @@ public class Ticket {
 	protected Ticket() {
 	}
 
-	Ticket(Conversa conversa, String motivo) {
+	Ticket(Conversa conversa, String motivo, NivelUrgencia urgencia, String resumo) {
 		this.conversa = Objects.requireNonNull(conversa, "conversa é obrigatória");
 		this.motivo = Validacao.textoObrigatorio(motivo, "motivo");
+		this.urgencia = Objects.requireNonNull(urgencia, "urgência é obrigatória");
+		this.resumo = resumo;
 	}
 
 	void iniciarAtendimento(Atendente atendente) {
@@ -66,6 +75,14 @@ public class Ticket {
 		}
 		this.status = StatusTicket.RESOLVIDO;
 		this.resolvidoEm = Instant.now();
+	}
+
+	public NivelUrgencia getUrgencia() {
+		return urgencia;
+	}
+
+	public String getResumo() {
+		return resumo;
 	}
 
 	public UUID getId() {
