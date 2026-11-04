@@ -59,7 +59,9 @@ connection string, e para o Neon ela é padrão JDBC.
 
 O Neon exige SSL, então o `DB_URL` de produção precisa terminar com
 `?sslmode=require`, diferente do banco local (que não usa SSL) — ex.:
-`jdbc:postgresql://<host>.neon.tech/wxn_chatbot?sslmode=require`.
+`jdbc:postgresql://<host>.neon.tech/wxn_chatbot?sslmode=require`. Use o
+endereço **direto** do Neon (host sem `-pooler`): o pooler roda em modo
+transação e não é indicado para as migrations do Flyway.
 
 ### Por que Windows, e não Linux, no App Service
 
@@ -81,10 +83,12 @@ ainda mais antigo, não se aplica aqui) — [Microsoft Learn – Java on App Ser
   RAM, 1 GB de armazenamento, sem "Always On" (o processo pode ficar ocioso
   e o próximo request "esquenta" de novo) — [Microsoft Learn – App Service plans](https://learn.microsoft.com/en-us/azure/app-service/overview-hosting-plans).
   **Se os 60 minutos de CPU do dia acabarem, o Azure para o app até meia-noite
-  UTC** (as requisições respondem HTTP 403 "Quota exceeded" nesse meio
-  tempo) — isso é bem improvável no uso normal do grupo (abrir o dashboard
-  algumas vezes por dia), mas evite deixar algo testando/pingando o backend
-  em loop.
+  UTC** (21h em Brasília; as requisições respondem HTTP 403 "This web app is
+  stopped" nesse meio tempo). Também existe um limite curto, por janela de 5
+  minutos, e o app pode ser parado e religado sozinho. No uso normal do grupo
+  (abrir o dashboard algumas vezes por dia) isso não acontece, mas acontece
+  se o app cair ao subir e o Azure ficar reiniciando (foi o que ocorreu em
+  03/11/2026), e também se algo ficar testando/pingando o backend em loop.
 - **Static Web Apps (frontend):** 100 GB de banda por mês, 0,5 GB de
   armazenamento do app, 2 domínios customizados com SSL grátis — bem acima
   do que um projeto acadêmico consome.
@@ -93,6 +97,75 @@ Ou seja: a troca por Azure é parecida com o que já valia para o Render Free
 (processo que pode "dormir"/esquentar de novo), só que sem custo nenhum de
 crédito. Vale dar um "esquenta" no backend antes de uma demonstração ao
 vivo, do mesmo jeito que já valeria com Render.
+
+## Configuração de produção (App Service)
+
+Configurações do `wxn-g16-backend` (portal → Environment variables → App
+settings). Os valores com `<...>` são segredos ou endereços do grupo e nunca
+entram no repositório:
+
+| Nome | Valor | Observação |
+|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` | Sem ele o backend sobe como `dev` (o perfil padrão), expõe o `/mock/wxn` sem senha e imprime o SQL no log |
+| `DB_URL` | `jdbc:postgresql://<host direto>.neon.tech/<banco>?sslmode=require` | Endereço direto do Neon, sem `-pooler` |
+| `DB_USER`, `DB_PASSWORD` | `<credenciais do Neon>` | |
+| `CORS_ALLOWED_ORIGINS` | `<URL do Static Web App>` | |
+| `WXN_API_BASE_URL` | `https://api-wxn.invalid` | A API da WXN ainda não existe. O `.invalid` nunca resolve, então as consultas viram "serviço indisponível". Trocar pela URL real quando ela existir |
+
+O perfil `prod` não traz valores padrão de desenvolvimento. Salvar uma
+configuração no portal reinicia o app (1 a 2 minutos).
+
+## Banco (Neon) e o Flyway
+
+- As tabelas são criadas pelo Flyway (`backend/src/main/resources/db/migration`)
+  e o Hibernate só valida (`ddl-auto=validate`). O banco de produção só pode
+  ter tabelas criadas por ele.
+- Se o backend cair ao subir com `Found non-empty schema(s) "public" but no
+  schema history table`, o banco tem tabelas que o Flyway não criou. Foi o
+  que aconteceu em 03/11/2026: o Neon tinha tabelas do Hibernate da época do
+  `ddl-auto=update`, e a primeira promoção com Flyway para a `main` derrubou o
+  app. Receita:
+  1. Conferir no SQL Editor do Neon que são só dados de teste (contar as linhas
+     de cada tabela em `public`).
+  2. Apagar as tabelas, por exemplo `DROP TABLE IF EXISTS mensagem, ticket,
+     conversa, cliente, chatbot, atendente CASCADE;` (isto apaga os dados).
+  3. Reiniciar o app uma vez. O Flyway cria tudo do zero.
+  4. Conferir `select version, success from flyway_schema_history order by
+     installed_rank;`.
+- Não use `spring.flyway.baseline-on-migrate` nem desligue o Flyway para
+  "contornar": foi testado e deixa o banco inconsistente (o Hibernate acusa
+  coluna faltando).
+- Numeração das migrations: a nova é o maior número entre a `main` e a
+  `develop` mais 1, e quem mescla depois renumera antes do merge. Migration
+  já mesclada não se edita. Se o banco já aplicou V4 e chega uma V2, o Flyway
+  se recusa a subir.
+
+## Quando o site cai
+
+- Ver o estado: `az webapp show -g rg-wxn-chatbot -n wxn-g16-backend --query
+  "{state:state, usageState:usageState}"`. `QuotaExceeded` e `Exceeded`
+  significam que a cota de CPU do plano gratuito acabou (a página responde 403
+  "This web app is stopped"). Normalmente é consequência de o app cair ao
+  subir; corrija a causa em vez de ficar reiniciando.
+- Não fique abrindo a URL nem reiniciando: cada acesso a um app parado o
+  religa e gasta cota.
+- Para verificar depois do conserto: `GET /api/health` deve responder
+  `{"status":"ok"}` (a primeira chamada pode levar uns 30 s) e
+  `GET /actuator/health/readiness` confere também o banco.
+- O Azure CLI atrás do Norton precisa de `REQUESTS_CA_BUNDLE` apontando para
+  o certificado do antivírus, senão dá `CERTIFICATE_VERIFY_FAILED`.
+- Os logs da aplicação não ficam ligados no App Service; sem eles, o erro de
+  subida só aparece reproduzindo localmente.
+
+## Promoção para a `main`
+
+A `main` só recebe da `develop`, por PR. Cada push na `main` que muda
+`backend/` publica em produção, e o deploy fica verde mesmo se o app não subir
+(ele só entrega o pacote). Antes de promover:
+
+1. Conferir as migrations novas contra o schema de produção.
+2. Conferir as configurações da tabela acima.
+3. Depois do deploy, abrir `/api/health` uma vez.
 
 ## Alternativas consideradas
 
@@ -119,7 +192,8 @@ logada, dentro do grupo de recursos `rg-wxn-chatbot`:
 3. **Web App** `wxn-g16-backend` — runtime `JAVA:21`. App settings
    configuradas (`DB_URL`, `DB_USER`, `DB_PASSWORD` apontando para o
    projeto Neon do grupo, `CORS_ALLOWED_ORIGINS` apontando para a URL do
-   Static Web App). Como o build precisa de JDK 21 (a máquina usada não
+   Static Web App; depois entraram `SPRING_PROFILES_ACTIVE` e
+   `WXN_API_BASE_URL`, ver "Configuração de produção"). Como o build precisa de JDK 21 (a máquina usada não
    tinha) e o Azure App Service Linux não oferecia Java 17/21 de verdade,
    o build+deploy roda por **GitHub Actions** —
    [`.github/workflows/deploy-backend.yml`](../.github/workflows/deploy-backend.yml) —
