@@ -3,14 +3,16 @@
 Fundação técnica do projeto de atendimento automatizado (chatbot / agente de
 IA) para a **WXN Tecnologia** — Projeto 3, Computação, CESAR School.
 
-> **Situação atual (29/10/2026):** o ambiente de desenvolvimento e de deploy
-> está pronto e o backend já tem o modelo de dados, a fila de conversas com a
-> API REST dela, o classificador de urgência, o mock da API da WXN, as
-> ferramentas do chatbot e um orquestrador de conversa que ainda usa uma LLM
-> fake. O frontend já tem o dashboard de atendimento (fila, assumir e
-> encerrar). O que ainda **não existe** é o endpoint de mensagens do chat, a
-> integração com a LLM de verdade e a tela do chat. Veja
-> [Próximos passos](#próximos-passos).
+> **Situação atual (05/11/2026):** o ambiente de desenvolvimento e de deploy
+> está pronto e **no ar no Azure**. O backend já tem o modelo de dados com
+> migrations (Flyway), a fila de conversas com a API REST dela, o
+> classificador de urgência, o `TicketServico` (abre o ticket com urgência e
+> resumo, ainda sem endpoint), o mock da API da WXN, as ferramentas do chatbot
+> e um orquestrador de conversa que ainda usa uma LLM fake. O frontend já tem
+> o dashboard de atendimento (fila, assumir e encerrar). A Gemini já foi
+> testada isoladamente e funcionou, mas ainda não está ligada ao backend. O que
+> ainda **não existe** é o endpoint de mensagens do chat, a integração com a
+> LLM de verdade e a tela do chat. Veja [Próximos passos](#próximos-passos).
 
 ## Sobre o projeto
 
@@ -42,10 +44,10 @@ flowchart LR
     BE --> DB[(PostgreSQL)]
 ```
 
-O que **já existe** de ponta a ponta é o caminho `Dashboard React → REST API
-→ Spring Boot → PostgreSQL`: o dashboard lista a fila de conversas que
-aguardam um atendente, abre cada uma, assume e encerra (ver
-[`docs/ui-fila-atendimento.md`](docs/ui-fila-atendimento.md)). No backend
+O que **já existe** de ponta a ponta, inclusive no ar no Azure, é o caminho
+`Dashboard React → REST API → Spring Boot → PostgreSQL`: o dashboard lista a
+fila de conversas que aguardam um atendente, abre cada uma, assume e encerra
+(ver [`docs/ui-fila-atendimento.md`](docs/ui-fila-atendimento.md)). No backend
 também já existem o orquestrador do turno da conversa (com uma LLM fake), o
 classificador de urgência e as ferramentas do chatbot, que consultam a API da
 WXN (hoje um mock). Ainda são só arquitetura planejada a LLM de verdade
@@ -57,18 +59,23 @@ WXN (hoje um mock). Ainda são só arquitetura planejada a LLM de verdade
 |---|---|---|
 | Backend | Java 21 (LTS) + Spring Boot 4.1 + Maven | Gerado a partir do Spring Initializr oficial em 31/08/2026 |
 | Frontend | React 19 + TypeScript + Vite | `npm create vite@latest -- --template react-ts` |
-| Banco de dados | PostgreSQL | Local em dev; [Neon](https://neon.com/) recomendado para a nuvem — ver `docs/deploy.md` |
-| Versionamento | Git + GitHub | Monorepo, fluxo `feature/* → develop → main` |
+| Banco de dados | PostgreSQL | Local em dev; [Neon](https://neon.com/) na nuvem — ver `docs/deploy.md` |
+| Migrations | Flyway | As tabelas vêm de `backend/src/main/resources/db/migration`; o Hibernate só valida |
+| Versionamento e CI | Git + GitHub + GitHub Actions | Monorepo, fluxo `feature/* → develop → main`; testes e build em todo PR |
 
 Versões exatas ficam fixadas em `backend/pom.xml` (Spring Boot, via o
 `spring-boot-starter-parent`) e `frontend/package.json` (React, Vite,
 TypeScript) — consulte esses arquivos para os números precisos a qualquer
 momento, em vez de confiar só nesta tabela.
 
-Fora de escopo por enquanto: Docker, Kubernetes, microsserviços,
-Redis/Kafka/RabbitMQ e autenticação. A parte de IA (Spring AI, RAG, MCP) ainda
-não foi implementada: as ferramentas do chatbot existem, mas nenhuma LLM as
-chama ainda. Ver [Próximos passos](#próximos-passos).
+Fora de escopo por enquanto: Kubernetes, microsserviços, Redis/Kafka/RabbitMQ
+e autenticação. O Docker só deve entrar nos testes de integração, via
+Testcontainers (a dependência já está no `pom.xml`, mas os testes ainda usam o
+Postgres do CI). A parte de IA (Spring AI, RAG, MCP) ainda não foi
+implementada no backend: as ferramentas do chatbot existem, mas nenhuma LLM as
+chama ainda; a Gemini só foi medida num experimento isolado
+([`docs/spike-llm.md`](docs/spike-llm.md)). Ver
+[Próximos passos](#próximos-passos).
 
 ## Pré-requisitos
 
@@ -196,6 +203,12 @@ No PowerShell: `./mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=demo"`.
 O que é criado e como usar a tela estão em
 [`docs/ui-fila-atendimento.md`](docs/ui-fila-atendimento.md).
 
+No Azure a fila só aparece preenchida se o App Service rodar com
+`SPRING_PROFILES_ACTIVE=prod,demo`. O `demo` liga junto o `dev` e o `mock`
+(o `/mock/wxn` passa a responder e o log mostra o SQL), então use só em
+apresentações e volte para `prod` depois. As conversas criadas ficam no banco e
+não são recriadas (o perfil só cria os dados se eles ainda não existirem).
+
 ### Testes
 
 ```bash
@@ -248,7 +261,7 @@ reais na plataforma de deploy (ver `docs/deploy.md`).
 
 ```
 WXN-G16/
-├── .github/workflows/       CI dos pull requests (ci.yml) e deploys (só na main)
+├── .github/workflows/       CI dos PRs (ci.yml), guarda de origem para a main e deploys (só na main)
 ├── backend/                 Spring Boot (Java 21, Maven)
 │   ├── src/main/java/br/com/wxnchatbot/backend/
 │   │   ├── config/          CorsConfig
@@ -260,7 +273,7 @@ WXN-G16/
 │   │   ├── model/           Entidades JPA do domínio (Conversa, Mensagem…)
 │   │   ├── notificacao/     NotificationGateway (e-mail) e implementação fake
 │   │   ├── repository/      Repositórios Spring Data (Conversa, Atendente)
-│   │   ├── service/         Fila de conversas, atendentes, classificador de urgência e orquestrador
+│   │   ├── service/         Fila de conversas, atendentes, classificador de urgência, tickets e orquestrador
 │   │   └── BackendApplication.java
 │   ├── src/test/java/…      Testes (JUnit)
 │   └── src/main/resources/  application.properties e db/migration (Flyway)
@@ -278,12 +291,13 @@ WXN-G16/
 │   ├── integracao-wxn.md      API simulada da WXN, ferramentas do chatbot e e-mail
 │   ├── modelagem-inicial.md  Entidades futuras (Company, User, Conversation…)
 │   ├── modelo-de-classes.md  Diagrama de classes e decisões de POO (Semana 11)
-│   ├── deploy.md              Pesquisa de hospedagem (Azure Free + Neon)
+│   ├── deploy.md              Hospedagem (Azure Free + Neon), configuração de produção,
+│   │                           reset do banco e o que fazer quando o site cai
 │   ├── entrega-semana-05.md   Texto da entrega acadêmica da Semana 05
 │   ├── entrega-semana-11.md   Texto da entrega acadêmica da Semana 11
 │   ├── escopo-chatbot.md      Canal (WhatsApp), acesso a dados do cliente,
 │   │                           glossário técnico e priorização (MoSCoW)
-│   ├── spike-llm.md           Medições para escolher a LLM da Lily
+│   ├── spike-llm.md           Limites, tool calling e latência da Gemini (plano grátis)
 │   ├── ui-fila-atendimento.md  Tela da fila: como subir com dados de demonstração
 │   └── status-e-roadmap.md    Diagnóstico do projeto, riscos, escopo do
 │                               PoC do SR2 e roadmap até lá
@@ -325,7 +339,16 @@ GitHub sugere `main` por padrão). O CI roda nos PRs para `develop` e `main`.
 As histórias e as tarefas ficam no board [WXN Grupo 16](https://github.com/orgs/CC-2025-2-CESAR/projects/3).
 
 `main` só recebe merge de `develop` quando o grupo considerar aquele estado
-pronto para ser uma versão estável (ex.: antes de uma entrega).
+pronto para ser uma versão estável (ex.: antes de uma entrega). Cada merge na
+`main` que mexe em `backend/` ou `frontend/` **publica em produção**.
+
+`main` e `develop` são protegidas: só mudam por pull request, com o CI verde
+(testes do backend e lint, tipos e build do frontend). Para a `main`, só vale
+PR vindo da `develop`: o check "Origem do PR para a main" reprova qualquer
+outra origem. Ao promover a `develop` para a `main`, mescle com **"Create a
+merge commit"** (não use squash nem rebase), para as duas branches não
+divergirem. Se uma migration nova entrar, confira antes se ela combina com o
+que já está aplicado no banco de produção (ver `docs/deploy.md`).
 
 ## Deploy
 
@@ -341,8 +364,17 @@ Postgres do Azure não tem tier gratuito):
 O backend builda e publica automaticamente via GitHub Actions a cada push na
 `main` que altere `backend/`
 ([`.github/workflows/deploy-backend.yml`](.github/workflows/deploy-backend.yml));
-o frontend segue a mesma regra para `frontend/`. Detalhes, decisões e como
+o frontend segue a mesma regra para `frontend/`. O deploy do backend só roda a
+partir da `main` e termina vermelho se o `/api/health` não responder depois de
+publicar. Em produção o backend usa `SPRING_PROFILES_ACTIVE=prod` e o endereço
+direto do Neon, sem `-pooler`. Detalhes, decisões, configuração e como
 reproduzir em [`docs/deploy.md`](docs/deploy.md).
+
+No plano gratuito o backend "dorme" quando fica parado: o primeiro acesso leva
+uns 30 segundos. Antes de uma demonstração, abra o `/api/health` e espere
+responder. Se o site mostrar "stopped" ou 403, não fique recarregando: cada
+acesso reinicia o app e gasta mais da cota diária (ver "Quando o site cai" em
+`docs/deploy.md`).
 
 ## Próximos passos
 
@@ -353,12 +385,21 @@ nesta ordem aproximada:
 1. **Fluxo de conversa** — endpoint de mensagens e o orquestrador completo:
    hoje o `OrquestradorConversaServico` só guarda a mensagem e pede a resposta
    ao `LlmClient`; falta decidir entre consultar a WXN, encaminhar a um humano
-   ou responder.
-2. **LLM** — integração com o Spring AI (a recomendação é o plano gratuito da
-   Gemini, com a Groq de reserva) no lugar da LLM fake, ajuste do prompt da
-   Lily e filtros de entrada e saída.
-3. **Frontend** — simulador de chat. O dashboard já mostra a fila, assume e
+   ou responder, e gravar o histórico das mensagens no banco.
+2. **Handoff para humano** — ligar o `TicketServico` (já abre o ticket com
+   urgência e resumo) ao orquestrador e expor a fila de tickets por urgência.
+   Hoje o dashboard assume e encerra *conversas*; falta o mesmo para o
+   *ticket*, com erro 409 se ele já estiver finalizado, o caso de nenhum
+   atendente disponível e o evento de domínio ao criar o ticket.
+3. **LLM** — integração com o Spring AI no lugar da LLM fake, ajuste do prompt
+   da Lily e filtros de entrada e saída. O experimento isolado com a Gemini
+   (plano grátis, sem cartão) mostrou que o `gemini-3.5-flash-lite` aciona as
+   ferramentas corretamente (0 erros em 25 chamadas, mediana de 1,6 s); o
+   `gemini-3.8-flash` só atende umas 10 perguntas com ferramenta por dia.
+   Falta o grupo confirmar a escolha (ver `docs/spike-llm.md`), com a Groq de
+   reserva.
+4. **Frontend** — simulador de chat. O dashboard já mostra a fila, assume e
    encerra conversas; faltam histórico e envio de mensagens pelo atendente.
-4. **Autenticação** mínima nas rotas do painel.
-5. **Depois da PoC** — RAG (base de conhecimento), MCP, e-mail de confirmação
+5. **Autenticação** mínima nas rotas do painel.
+6. **Depois da PoC** — RAG (base de conhecimento), MCP, e-mail de confirmação
    com SMTP real e o canal real do WhatsApp.
