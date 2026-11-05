@@ -115,6 +115,7 @@ classDiagram
         -Instant encerradaEm
         +adicionarMensagem(Remetente remetente, String conteudo) Mensagem
         +solicitarAtendente(String motivo) Ticket
+        +solicitarAtendente(String motivo, NivelUrgencia urgencia, String resumo) Ticket
         +atribuirAtendente(Atendente atendente) void
         +encerrar() void
     }
@@ -127,13 +128,13 @@ classDiagram
     }
 
     class Ticket {
-        -UUID id
-        -String motivo
-        -StatusTicket status
-        -Instant abertoEm
-        -Instant resolvidoEm
-        ~iniciarAtendimento(Atendente atendente) void
-        ~resolver() void
+      -UUID id
+      -String motivo
+      -NivelUrgencia urgencia
+      -String resumo
+      -StatusTicket status
+      -Instant abertoEm
+      -Instant resolvidoEm
     }
 
     class TipoRemetente {
