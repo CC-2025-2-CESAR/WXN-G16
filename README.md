@@ -298,6 +298,8 @@ WXN-G16/
 │   ├── escopo-chatbot.md      Canal (WhatsApp), acesso a dados do cliente,
 │   │                           glossário técnico e priorização (MoSCoW)
 │   ├── spike-llm.md           Limites, tool calling e latência da Gemini (plano grátis)
+│   ├── chatbot-lily.md        Como a Lily decide (intenção, triagem, encaminhamento) e como ligar a LLM
+│   ├── whatsapp.md            Webhook e envio pela Cloud API da Meta: variáveis, configuração e limites
 │   ├── ui-fila-atendimento.md  Tela da fila: como subir com dados de demonstração
 │   └── status-e-roadmap.md    Diagnóstico do projeto, riscos, escopo do
 │                               PoC do SR2 e roadmap até lá

@@ -115,6 +115,23 @@ entram no repositório:
 O perfil `prod` não traz valores padrão de desenvolvimento. Salvar uma
 configuração no portal reinicia o app (1 a 2 minutos).
 
+### Chatbot, Gemini e WhatsApp (opcionais)
+
+Sem nenhuma destas, o backend responde com a LLM de mentira e o chat pela API e o WhatsApp ficam desligados. Detalhes em
+`docs/chatbot-lily.md` e `docs/whatsapp.md`.
+
+| Nome | Valor | Observação |
+|---|---|---|
+| `CHATBOT_LLM` | `gemini` | Liga o Gemini. Exige `GEMINI_API_KEY`; sem ela o backend não sobe |
+| `GEMINI_API_KEY` | `<chave do Google AI Studio>` | Segredo, só aqui no portal |
+| `CHAT_API_HABILITADA` | `false` | Já é o padrão em `prod`. Com `prod,demo` o chat pela API fica ligado (o `demo` traz o `dev`): coloque `false` se for deixar o Gemini ligado |
+| `CHAT_EMPRESA_PADRAO` | vazio | Empresa onde entram números sem cadastro; vazio = só atende números cadastrados |
+| `WHATSAPP_HABILITADO` | `true` | Exige as quatro `WHATSAPP_*` abaixo |
+| `WHATSAPP_TOKEN_DE_VERIFICACAO`, `WHATSAPP_SEGREDO_DO_APP`, `WHATSAPP_TOKEN_DE_ACESSO`, `WHATSAPP_ID_DO_NUMERO` | `<da Meta>` | Segredos; veja `docs/whatsapp.md` |
+
+O limite do Gemini no plano grátis (15 requisições por minuto no `gemini-3.5-flash-lite`, ver `docs/spike-llm.md`) vale para o
+projeto inteiro. Pedir atendente e citar protocolo não gastam requisição, mas cada dúvida gasta uma ou duas.
+
 ## Banco (Neon) e o Flyway
 
 - As tabelas são criadas pelo Flyway (`backend/src/main/resources/db/migration`)
