@@ -54,7 +54,11 @@ pelo `POST /chamados` passam a existir para consulta até reiniciar o backend.
 
 > O identificador da empresa de demonstração do mock deve ser o mesmo da
 > empresa de seed do banco quando a `Empresa` existir (decisão DEC-01 do board
-> do projeto).
+> do projeto). No perfil `dev` isso já vale: a empresa padrão do chat
+> (`chat.empresa-padrao-id`) e a do perfil `demo` são criadas com o id
+> `00000000-0000-0000-0000-000000000001`. Um banco `demo` criado antes dessa
+> mudança tem a empresa com id aleatório: a consulta de demanda pelo chat não
+> acha os protocolos de exemplo dos clientes dela até o banco ser recriado.
 
 ## Como o orquestrador deve usar as ferramentas
 

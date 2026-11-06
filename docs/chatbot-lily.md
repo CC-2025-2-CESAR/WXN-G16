@@ -60,6 +60,7 @@ Dá para trocar por outro classificador (por exemplo um modelo próprio para dec
 | `GEMINI_NIVEL_DE_PENSAMENTO` | `low` | Nível de raciocínio do Gemini 3 (menos = mais rápido). Vazio desliga o campo |
 | `CHAT_API_HABILITADA` | `false` (`true` no perfil `dev`) | Liga `POST /api/chat/mensagens` e `POST /api/conversas/{id}/mensagens` |
 | `CHAT_EMPRESA_PADRAO` | vazio (`Empresa Demonstração` no perfil `dev`) | Empresa onde entram telefones ainda sem cadastro. Vazio = só atende telefones cadastrados |
+| `CHAT_EMPRESA_PADRAO_ID` | vazio (`00000000-0000-0000-0000-000000000001` no perfil `dev`) | Id da empresa padrão. Quando definido, vale no lugar do nome e a empresa é criada com esse id se não existir. No `dev` é o id que a API simulada da WXN conhece |
 
 A API de chat não tem autenticação e cada chamada pode gastar a cota da LLM, por isso fica desligada em produção. No perfil
 `prod,demo` ela fica ligada (o `demo` traz o `dev`): desligue com `CHAT_API_HABILITADA=false` se for expor com Gemini.
@@ -80,6 +81,11 @@ curl -s localhost:8080/api/chat/mensagens -H 'Content-Type: application/json' \
 
 A resposta traz `"resposta": null` quando a conversa está com um atendente ou na fila: a Lily não fala, e a mensagem do
 cliente só fica gravada.
+
+Os protocolos de exemplo (`WXN-2026-0001` a `0003`) só aparecem para clientes da empresa de id
+`00000000-0000-0000-0000-000000000001`, a empresa padrão do perfil `dev`. Um telefone já cadastrado em outra empresa
+(por exemplo, os da demonstração criada antes dessa configuração existir) recebe "não encontrei a demanda"; veja
+[`docs/integracao-wxn.md`](integracao-wxn.md).
 
 ## Limitações conhecidas
 

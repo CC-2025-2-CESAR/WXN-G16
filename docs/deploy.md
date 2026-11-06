@@ -126,6 +126,7 @@ Sem nenhuma destas, o backend responde com a LLM de mentira e o chat pela API e 
 | `GEMINI_API_KEY` | `<chave do Google AI Studio>` | Segredo, só aqui no portal |
 | `CHAT_API_HABILITADA` | `false` | Já é o padrão em `prod`. Com `prod,demo` o chat pela API fica ligado (o `demo` traz o `dev`): coloque `false` se for deixar o Gemini ligado |
 | `CHAT_EMPRESA_PADRAO` | vazio | Empresa onde entram números sem cadastro; vazio = só atende números cadastrados |
+| `CHAT_EMPRESA_PADRAO_ID` | vazio | Id da empresa padrão; quando definido vale no lugar do nome. No `prod,demo` o perfil `dev` já define o id que a API simulada conhece |
 | `WHATSAPP_HABILITADO` | `true` | Exige as quatro `WHATSAPP_*` abaixo |
 | `WHATSAPP_TOKEN_DE_VERIFICACAO`, `WHATSAPP_SEGREDO_DO_APP`, `WHATSAPP_TOKEN_DE_ACESSO`, `WHATSAPP_ID_DO_NUMERO` | `<da Meta>` | Segredos; veja `docs/whatsapp.md` |
 

@@ -57,7 +57,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import tools.jackson.databind.json.JsonMapper;
 
-@SpringBootTest(properties = "chat.empresa-padrao=Empresa Teste do Chat")
+@SpringBootTest(properties = { "chat.empresa-padrao=Empresa Teste do Chat", "chat.empresa-padrao-id=" })
 @AutoConfigureMockMvc
 class ChatFluxoIntegracaoTest {
 

@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import br.com.wxnchatbot.backend.integracao.wxn.mock.MockWxnDados;
 import br.com.wxnchatbot.backend.model.Atendente;
 import br.com.wxnchatbot.backend.model.Chatbot;
 import br.com.wxnchatbot.backend.model.Cliente;
@@ -111,7 +112,7 @@ public class DadosDeDemonstracao implements CommandLineRunner {
 			return;
 		}
 		Instant agora = Instant.now();
-		Empresa empresa = persistir(new Empresa(NOME_EMPRESA));
+		Empresa empresa = persistir(new Empresa(MockWxnDados.EMPRESA_DEMO, NOME_EMPRESA));
 		Chatbot lily = persistir(new Chatbot("Lily", "Oi, eu sou a Lily, assistente virtual da WXN. Como posso ajudar?"));
 		Atendente ana = persistir(new Atendente("Ana Martins", "ana.martins" + DOMINIO_EMAIL));
 		persistir(new Atendente("Paulo Mendes", "paulo.mendes" + DOMINIO_EMAIL));

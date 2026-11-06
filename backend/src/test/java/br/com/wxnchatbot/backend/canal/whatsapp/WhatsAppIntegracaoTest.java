@@ -41,7 +41,7 @@ import jakarta.persistence.PersistenceContext;
 /** Do webhook assinado da Meta até a resposta enviada pelo WhatsApp, com banco de verdade e a Meta de mentira. */
 @SpringBootTest(properties = { "whatsapp.habilitado=true", "whatsapp.token-de-verificacao=verificacao",
 		"whatsapp.segredo-do-app=segredo-do-app", "whatsapp.token-de-acesso=acesso", "whatsapp.id-do-numero=123",
-		"chat.empresa-padrao=Empresa Teste WhatsApp" })
+		"chat.empresa-padrao=Empresa Teste WhatsApp", "chat.empresa-padrao-id=" })
 @AutoConfigureMockMvc
 class WhatsAppIntegracaoTest {
 

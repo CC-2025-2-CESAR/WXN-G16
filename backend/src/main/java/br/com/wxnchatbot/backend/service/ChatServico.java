@@ -37,11 +37,13 @@ public class ChatServico {
 	private final OrquestradorConversaServico orquestrador;
 	private final TransactionTemplate transacao;
 	private final String empresaPadrao;
+	private final UUID empresaPadraoId;
 	private final ReentrantLock[] trancas = new ReentrantLock[TRANCAS];
 
 	public ChatServico(ClienteRepositorio clientes, EmpresaRepositorio empresas, ChatbotRepositorio chatbots,
 			ConversaRepositorio conversas, OrquestradorConversaServico orquestrador,
-			PlatformTransactionManager transacoes, @Value("${chat.empresa-padrao:}") String empresaPadrao) {
+			PlatformTransactionManager transacoes, @Value("${chat.empresa-padrao:}") String empresaPadrao,
+			@Value("${chat.empresa-padrao-id:}") String empresaPadraoId) {
 		this.clientes = clientes;
 		this.empresas = empresas;
 		this.chatbots = chatbots;
@@ -49,14 +51,30 @@ public class ChatServico {
 		this.orquestrador = orquestrador;
 		this.transacao = new TransactionTemplate(transacoes);
 		this.empresaPadrao = empresaPadrao == null ? "" : empresaPadrao.strip();
+		this.empresaPadraoId = lerId(empresaPadraoId, this.empresaPadrao);
 		for (int i = 0; i < TRANCAS; i++) {
 			trancas[i] = new ReentrantLock();
 		}
 	}
 
+	private static UUID lerId(String texto, String nomeDaEmpresa) {
+		if (texto == null || texto.isBlank()) {
+			return null;
+		}
+		if (nomeDaEmpresa.isEmpty()) {
+			throw new IllegalStateException("chat.empresa-padrao-id exige chat.empresa-padrao");
+		}
+		try {
+			return UUID.fromString(texto.strip());
+		} catch (IllegalArgumentException e) {
+			throw new IllegalStateException("chat.empresa-padrao-id não é um UUID válido: " + texto, e);
+		}
+	}
+
 	/**
 	 * Recebe uma mensagem de texto enviada pelo telefone. O cliente que ainda não existe é cadastrado na empresa
-	 * padrão (chat.empresa-padrao); sem empresa padrão, só atende telefones já cadastrados.
+	 * padrão (chat.empresa-padrao); sem empresa padrão, só atende telefones já cadastrados. Quando
+	 * chat.empresa-padrao-id está definido, a empresa padrão é a que tem esse id, e não a que tem esse nome.
 	 */
 	public RespostaChat receber(String telefone, String nome, String texto) {
 		Objects.requireNonNull(texto, "texto é obrigatório");
@@ -85,7 +103,7 @@ public class ChatServico {
 			return achados.get(0);
 		}
 		if (achados.size() > 1) {
-			return achados.stream().filter(c -> c.getEmpresa().getNome().equals(empresaPadrao)).findFirst()
+			return achados.stream().filter(c -> ehDaEmpresaPadrao(c.getEmpresa())).findFirst()
 					.orElseThrow(() -> new IllegalStateException("O telefone está cadastrado em mais de uma empresa"));
 		}
 		if (empresaPadrao.isEmpty()) {
@@ -94,7 +112,15 @@ public class ChatServico {
 		return clientes.save(new Cliente(empresaPadrao(), nomeOuPadrao(nome, telefone), TelefoneBr.nacional(telefone)));
 	}
 
+	private boolean ehDaEmpresaPadrao(Empresa empresa) {
+		return empresaPadraoId != null ? empresa.getId().equals(empresaPadraoId) : empresa.getNome().equals(empresaPadrao);
+	}
+
 	private Empresa empresaPadrao() {
+		if (empresaPadraoId != null) {
+			return empresas.findById(empresaPadraoId)
+					.orElseGet(() -> empresas.save(new Empresa(empresaPadraoId, empresaPadrao)));
+		}
 		return empresas.findFirstByNomeOrderByIdAsc(empresaPadrao).orElseGet(() -> empresas.save(new Empresa(empresaPadrao)));
 	}
 

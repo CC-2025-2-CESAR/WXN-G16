@@ -37,6 +37,7 @@ import br.com.wxnchatbot.backend.repository.EmpresaRepositorio;
 class ChatServicoTest {
 
 	private static final String EMPRESA_PADRAO = "Empresa Padrão";
+	private static final UUID ID_EMPRESA_PADRAO = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
 	@Mock
 	private ClienteRepositorio clientes;
@@ -55,7 +56,12 @@ class ChatServicoTest {
 	private final Chatbot lily = new Chatbot("Lily", "Oi!");
 
 	private ChatServico servico(String empresaPadrao) {
-		return new ChatServico(clientes, empresas, chatbots, conversas, orquestrador, transacoes, empresaPadrao);
+		return servico(empresaPadrao, "");
+	}
+
+	private ChatServico servico(String empresaPadrao, String empresaPadraoId) {
+		return new ChatServico(clientes, empresas, chatbots, conversas, orquestrador, transacoes, empresaPadrao,
+				empresaPadraoId);
 	}
 
 	@BeforeEach
@@ -204,5 +210,69 @@ class ChatServicoTest {
 		when(empresas.findFirstByNomeOrderByIdAsc(EMPRESA_PADRAO)).thenReturn(Optional.of(empresa));
 
 		assertThrows(IllegalArgumentException.class, () -> servico(EMPRESA_PADRAO).receber("123", null, "Oi"));
+	}
+
+	@Test
+	void comIdDaEmpresaPadraoOClienteNovoEntraNaEmpresaDesseIdEIgnoraONome() {
+		Empresa daApi = new Empresa(ID_EMPRESA_PADRAO, EMPRESA_PADRAO);
+		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of());
+		when(empresas.findById(ID_EMPRESA_PADRAO)).thenReturn(Optional.of(daApi));
+		when(clientes.save(any(Cliente.class))).thenAnswer(chamada -> chamada.getArgument(0));
+		when(chatbots.findFirstByAtivoTrueOrderByIdAsc()).thenReturn(Optional.of(lily));
+		when(orquestrador.processarTurno(any(), any())).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
+
+		servico(EMPRESA_PADRAO, ID_EMPRESA_PADRAO.toString()).receber("81999990101", null, "Oi");
+
+		ArgumentCaptor<Cliente> novo = ArgumentCaptor.forClass(Cliente.class);
+		verify(clientes).save(novo.capture());
+		assertEquals(daApi, novo.getValue().getEmpresa());
+		verify(empresas, never()).findFirstByNomeOrderByIdAsc(any());
+		verify(empresas, never()).save(any());
+	}
+
+	@Test
+	void comIdDaEmpresaPadraoQueAindaNaoExisteAEmpresaEConstruidaComEsseId() {
+		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of());
+		when(empresas.findById(ID_EMPRESA_PADRAO)).thenReturn(Optional.empty());
+		when(empresas.save(any(Empresa.class))).thenAnswer(chamada -> chamada.getArgument(0));
+		when(clientes.save(any(Cliente.class))).thenAnswer(chamada -> chamada.getArgument(0));
+		when(chatbots.findFirstByAtivoTrueOrderByIdAsc()).thenReturn(Optional.of(lily));
+		when(orquestrador.processarTurno(any(), any())).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
+
+		servico(EMPRESA_PADRAO, ID_EMPRESA_PADRAO.toString()).receber("81999990101", null, "Oi");
+
+		ArgumentCaptor<Empresa> criada = ArgumentCaptor.forClass(Empresa.class);
+		verify(empresas).save(criada.capture());
+		assertEquals(ID_EMPRESA_PADRAO, criada.getValue().getId());
+		assertEquals(EMPRESA_PADRAO, criada.getValue().getNome());
+	}
+
+	@Test
+	void telefoneEmDuasEmpresasComIdPadraoFicaComAEmpresaDesseIdMesmoComNomeDiferente() {
+		Empresa daApi = new Empresa(ID_EMPRESA_PADRAO, "Nome Que Não Importa");
+		Cliente comMesmoNomeDeOutraEmpresa = cliente(new Empresa(EMPRESA_PADRAO), "81999990101");
+		Cliente daEmpresaPadrao = cliente(daApi, "81999990101");
+		Conversa aberta = new Conversa(daEmpresaPadrao, lily);
+		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of(comMesmoNomeDeOutraEmpresa, daEmpresaPadrao));
+		when(conversas.findFirstByClienteIdAndStatusNotOrderByIniciadaEmDesc(daEmpresaPadrao.getId(), StatusConversa.ENCERRADA))
+				.thenReturn(Optional.of(aberta));
+		when(orquestrador.processarTurno(any(), any())).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
+
+		RespostaChat resposta = servico(EMPRESA_PADRAO, ID_EMPRESA_PADRAO.toString()).receber("81999990101", null, "Oi");
+
+		assertEquals(aberta.getId(), resposta.conversaId());
+	}
+
+	@Test
+	void idDaEmpresaPadraoQueNaoEUuidImpedeOServicoDeSubir() {
+		IllegalStateException erro = assertThrows(IllegalStateException.class,
+				() -> servico(EMPRESA_PADRAO, "isto-nao-e-um-uuid"));
+
+		assertTrue(erro.getMessage().contains("isto-nao-e-um-uuid"));
+	}
+
+	@Test
+	void idDaEmpresaPadraoSemONomeDaEmpresaImpedeOServicoDeSubir() {
+		assertThrows(IllegalStateException.class, () -> servico("", ID_EMPRESA_PADRAO.toString()));
 	}
 }
