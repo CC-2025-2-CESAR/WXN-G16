@@ -1,6 +1,7 @@
 package br.com.wxnchatbot.backend.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -194,6 +195,15 @@ class ChatFluxoIntegracaoTest {
 		verify(gateway).abrirChamado(any(), chamado.capture(), any());
 		assertEquals("O financeiro não abre depois que troquei a senha", chamado.getValue().titulo());
 		assertEquals("O financeiro não abre depois que troquei a senha. Os outros módulos abrem.", chamado.getValue().descricao());
+	}
+
+	@Test
+	void pedidoDeChamadoVagoPerguntaOQueAconteceAntesDePedirConfirmacao() throws Exception {
+		RespostaChat resposta = enviar(TELEFONE, "Quero abrir um chamado para aquele problema do relatório");
+
+		assertTrue(resposta.resposta().contains("Me conta o que está acontecendo"));
+		assertFalse(resposta.resposta().contains("Posso confirmar?"));
+		verify(gateway, never()).abrirChamado(any(), any(), any());
 	}
 
 	@Test

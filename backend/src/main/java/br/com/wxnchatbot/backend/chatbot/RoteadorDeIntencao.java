@@ -45,8 +45,11 @@ public class RoteadorDeIntencao {
 	static final String ENCAMINHANDO_SEM_PROTOCOLO = "Sem o protocolo eu não consigo localizar a demanda com segurança. Vou chamar um atendente para buscar pelo seu cadastro.";
 	static final String ENCAMINHANDO_POR_DUVIDA = "Não tenho certeza de que consigo ajudar com isso, então vou chamar um atendente para você.";
 
-	private static final int DETALHE_MINIMO = 40;
 	private static final int TITULO_USADO_MAXIMO = 100;
+
+	/** O caminho escolhido para a mensagem e, para ABRIR_CHAMADO, o que o classificador achou dos detalhes. */
+	private record Rota(Intencao intencao, Boolean descricaoSuficiente) {
+	}
 
 	private final ClassificadorDeIntencao classificador;
 	private final ExtratorDeProtocolo extrator;
@@ -82,10 +85,10 @@ public class RoteadorDeIntencao {
 			return tratarConfirmacao(empresaId, conversa, historico, texto);
 		}
 		String anterior = ultimaDoChatbot(conversa).orElse("");
-		Intencao intencao = intencaoDe(historico, anterior);
-		return switch (intencao) {
+		Rota rota = rotaDe(historico, anterior);
+		return switch (rota.intencao()) {
 			case CONSULTAR_DEMANDA -> consultar(empresaId, texto, anterior);
-			case ABRIR_CHAMADO -> abrirChamado(empresaId, conversa.getId(), texto, anterior);
+			case ABRIR_CHAMADO -> abrirChamado(empresaId, conversa.getId(), texto, anterior, rota.descricaoSuficiente());
 			case DUVIDA -> new Responder(llm.responder(PromptDaLily.comConhecimento(conhecimento.texto()), historico));
 			case FALAR_COM_HUMANO -> new Encaminhar("O cliente pediu para falar com um atendente", ENCAMINHANDO);
 			case FORA_DE_ESCOPO -> new Responder(FORA_DE_ESCOPO);
@@ -94,17 +97,17 @@ public class RoteadorDeIntencao {
 	}
 
 	/** Classifica a mensagem; quando ela responde a uma pergunta da Lily, segue o assunto dessa pergunta. */
-	private Intencao intencaoDe(List<MensagemLlm> historico, String anterior) {
+	private Rota rotaDe(List<MensagemLlm> historico, String anterior) {
 		ResultadoIntencao resultado = classificador.classificar(historico);
 		Intencao intencao = resultado.confianca() < limiarDeConfianca ? Intencao.INCERTO : resultado.intencao();
 		boolean semAssuntoClaro = intencao == Intencao.DUVIDA || intencao == Intencao.INCERTO;
 		if (anterior.equals(PEDIR_PROTOCOLO) && semAssuntoClaro) {
-			return Intencao.CONSULTAR_DEMANDA;
+			return new Rota(Intencao.CONSULTAR_DEMANDA, null);
 		}
 		if (anterior.equals(PEDIR_DETALHES) && (semAssuntoClaro || intencao == Intencao.CONSULTAR_DEMANDA)) {
-			return Intencao.ABRIR_CHAMADO;
+			return new Rota(Intencao.ABRIR_CHAMADO, null);
 		}
-		return intencao;
+		return new Rota(intencao, resultado.descricaoSuficiente());
 	}
 
 	private DecisaoDoTurno consultar(UUID empresaId, String texto, String anterior) {
@@ -123,9 +126,16 @@ public class RoteadorDeIntencao {
 		};
 	}
 
-	private DecisaoDoTurno abrirChamado(UUID empresaId, UUID conversaId, String texto, String anterior) {
+	/**
+	 * Só pede confirmação quando o cliente já contou o que está acontecendo; se a mensagem for vaga ("aquele problema do
+	 * relatório"), pergunta primeiro. Na dúvida, pergunta: basta as palavras ou o classificador acharem pouco. Depois de
+	 * ter perguntado, aceita o que vier.
+	 */
+	private DecisaoDoTurno abrirChamado(UUID empresaId, UUID conversaId, String texto, String anterior,
+			Boolean descricaoSuficiente) {
 		String limpo = texto.strip().replaceAll("\\s+", " ");
-		boolean trouxeDetalhes = anterior.equals(PEDIR_DETALHES) || limpo.length() >= DETALHE_MINIMO;
+		boolean trouxeDetalhes = anterior.equals(PEDIR_DETALHES)
+				|| (DetalhesDoChamado.suficientes(limpo) && !Boolean.FALSE.equals(descricaoSuficiente));
 		if (!trouxeDetalhes) {
 			return new Responder(PEDIR_DETALHES);
 		}
