@@ -1,5 +1,6 @@
 package br.com.wxnchatbot.backend.model;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -21,6 +22,12 @@ public class Empresa {
 
 	public Empresa(String nome) {
 		this.nome = Validacao.textoObrigatorio(nome, "nome");
+	}
+
+	/** Para empresas cujo id já é conhecido por outro sistema, como a empresa de demonstração da API simulada da WXN. */
+	public Empresa(UUID id, String nome) {
+		this(nome);
+		this.id = Objects.requireNonNull(id, "id é obrigatório");
 	}
 
 	public UUID getId() {
