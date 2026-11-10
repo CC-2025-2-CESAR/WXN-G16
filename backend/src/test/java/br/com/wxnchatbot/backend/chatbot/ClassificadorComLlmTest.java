@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -74,19 +73,40 @@ class ClassificadorComLlmTest {
 	}
 
 	@Test
-	void pedidoDeAtendenteNemChegaALlm() {
-		ResultadoIntencao resultado = classificador.classificar(conversa("Quero falar com um atendente"));
+	void naoHaAtalhoPorPalavraChaveAntesDaLlm() {
+		when(llm.responderEmJson(any(), any(), any())).thenReturn("{\"intencao\":\"DUVIDA\",\"confianca\":0.9}");
 
-		assertEquals(ResultadoIntencao.certa(Intencao.FALAR_COM_HUMANO), resultado);
-		verifyNoInteractions(llm);
+		ResultadoIntencao resultado = classificador.classificar(conversa("eu uso esse protocolo em que?"));
+
+		assertEquals(Intencao.DUVIDA, resultado.intencao());
+		verify(llm).responderEmJson(any(), any(), any());
 	}
 
 	@Test
-	void protocoloNaMensagemNemChegaALlm() {
+	void pedidoDeAtendenteTambemPassaPelaLlm() {
+		when(llm.responderEmJson(any(), any(), any())).thenReturn("{\"intencao\":\"FALAR_COM_HUMANO\",\"confianca\":0.97}");
+
+		ResultadoIntencao resultado = classificador.classificar(conversa("Quero falar com um atendente"));
+
+		assertEquals(new ResultadoIntencao(Intencao.FALAR_COM_HUMANO, 0.97), resultado);
+		verify(llm).responderEmJson(any(), any(), any());
+	}
+
+	@Test
+	void protocoloNaMensagemTambemPassaPelaLlm() {
+		when(llm.responderEmJson(any(), any(), any())).thenReturn("{\"intencao\":\"CONSULTAR_DEMANDA\",\"confianca\":0.95}");
+
 		ResultadoIntencao resultado = classificador.classificar(conversa("WXN-2026-0001"));
 
 		assertEquals(Intencao.CONSULTAR_DEMANDA, resultado.intencao());
-		verifyNoInteractions(llm);
+		verify(llm).responderEmJson(any(), any(), any());
+	}
+
+	@Test
+	void oPromptSeparaPerguntaSobreOProtocoloDeConsultaDeStatus() {
+		assertTrue(ClassificadorComLlm.PROMPT.contains("para que serve esse protocolo"));
+		assertTrue(ClassificadorComLlm.PROMPT.contains("são DUVIDA"));
+		assertTrue(ClassificadorComLlm.PROMPT.contains("FALAR_COM_HUMANO"));
 	}
 
 	@Test
