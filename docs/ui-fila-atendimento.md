@@ -57,6 +57,11 @@ fila, então, para repetir a demonstração do zero, recrie o banco.
 - Encerra uma conversa assumida (`POST /api/conversas/{conversaId}/encerrar`).
 - Quando o servidor recusa algo (conversa já assumida, atendente indisponível,
   conversa que sumiu), mostra o `detail` da resposta e recarrega a fila.
+- Mostra um **selo de origem** ao lado do cliente, na lista e no detalhe, para ninguém confundir um teste com um cliente
+  de verdade: **Demonstração** (contorno tracejado: dados fictícios do perfil `demo`), **Simulador** (teste escrito por
+  alguém do grupo no simulador de WhatsApp ou pela API de chat) e **WhatsApp** (cliente real). A origem é gravada quando a
+  conversa é aberta (`conversa.origem`) e não muda depois; as conversas que já existiam antes da coluna contam como
+  demonstração.
 
 As regras vêm do backend: a fila segue a ordem de chegada, só atendente
 disponível assume e, se dois assumem a mesma conversa ao mesmo tempo, um

@@ -33,6 +33,7 @@ import br.com.wxnchatbot.backend.model.Chatbot;
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
 import br.com.wxnchatbot.backend.model.Empresa;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.model.TipoRemetente;
 import jakarta.persistence.EntityManager;
@@ -124,6 +125,7 @@ class WhatsAppIntegracaoTest {
 		assertEquals(1, conversas.size());
 		assertEquals(2, conversas.get(0).getMensagens().size());
 		assertEquals(TipoRemetente.CLIENTE, conversas.get(0).getMensagens().get(0).getTipoRemetente());
+		assertEquals(OrigemConversa.WHATSAPP, conversas.get(0).getOrigem());
 	}
 
 	@Test

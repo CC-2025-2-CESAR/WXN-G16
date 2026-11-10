@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef } from "react";
+import { SeloDeOrigem } from "../../components/SeloDeOrigem";
 import { useDetalheFila } from "../../hooks/useDetalheFila";
 import type {
   Atendente,
@@ -103,6 +104,7 @@ export function ConversationDetail({
             <div className="contact-phone">
               {formatarTelefone(c.clienteTelefone)}
             </div>
+            <SeloDeOrigem origem={c.origem} />
           </div>
           <span className={`badge ${atendimento ? "active" : "waiting"}`}>
             {atendimento ? "Em atendimento" : "Aguardando humano"}

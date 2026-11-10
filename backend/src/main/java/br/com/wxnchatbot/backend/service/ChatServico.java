@@ -14,6 +14,7 @@ import br.com.wxnchatbot.backend.model.Chatbot;
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
 import br.com.wxnchatbot.backend.model.Empresa;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.repository.ChatbotRepositorio;
 import br.com.wxnchatbot.backend.repository.ClienteRepositorio;
@@ -74,15 +75,17 @@ public class ChatServico {
 	/**
 	 * Recebe uma mensagem de texto enviada pelo telefone. O cliente que ainda não existe é cadastrado na empresa
 	 * padrão (chat.empresa-padrao); sem empresa padrão, só atende telefones já cadastrados. Quando
-	 * chat.empresa-padrao-id está definido, a empresa padrão é a que tem esse id, e não a que tem esse nome.
+	 * chat.empresa-padrao-id está definido, a empresa padrão é a que tem esse id, e não a que tem esse nome. A origem
+	 * (canal por onde a mensagem chegou) só marca a conversa quando ela é aberta agora: uma conversa que já estava aberta
+	 * para o telefone continua com a origem que tinha.
 	 */
-	public RespostaChat receber(String telefone, String nome, String texto) {
+	public RespostaChat receber(OrigemConversa origem, String telefone, String nome, String texto) {
 		Objects.requireNonNull(texto, "texto é obrigatório");
 		String nacional = TelefoneBr.nacional(telefone);
 		ReentrantLock tranca = trancaDe(nacional);
 		tranca.lock();
 		try {
-			UUID conversaId = transacao.execute(status -> localizarOuAbrirConversa(telefone, nome));
+			UUID conversaId = transacao.execute(status -> localizarOuAbrirConversa(origem, telefone, nome));
 			ResultadoTurno resultado = orquestrador.processarTurno(conversaId, texto);
 			return new RespostaChat(conversaId, resultado.resposta(), resultado.status());
 		} finally {
@@ -90,11 +93,11 @@ public class ChatServico {
 		}
 	}
 
-	private UUID localizarOuAbrirConversa(String telefone, String nome) {
+	private UUID localizarOuAbrirConversa(OrigemConversa origem, String telefone, String nome) {
 		Cliente cliente = localizarOuCadastrarCliente(telefone, nome);
 		return conversas.findFirstByClienteIdAndStatusNotOrderByIniciadaEmDesc(cliente.getId(), StatusConversa.ENCERRADA)
 				.map(Conversa::getId)
-				.orElseGet(() -> conversas.save(new Conversa(cliente, chatbotAtivo())).getId());
+				.orElseGet(() -> conversas.save(new Conversa(cliente, chatbotAtivo(), origem)).getId());
 	}
 
 	private Cliente localizarOuCadastrarCliente(String telefone, String nome) {

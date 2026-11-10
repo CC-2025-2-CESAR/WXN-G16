@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import br.com.wxnchatbot.backend.canal.whatsapp.EntregaDoWhatsApp.MensagemRecebida;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.service.ChatServico;
 import br.com.wxnchatbot.backend.service.RecursoNaoEncontradoException;
@@ -56,7 +57,7 @@ class ProcessadorDeMensagensWhatsAppTest {
 
 	@Test
 	void textoVaiParaOChatEARespostaVoltaPeloWhatsApp() {
-		when(chat.receber(NUMERO, "Maria Souza", "Oi")).thenReturn(resposta("Olá!"));
+		when(chat.receber(OrigemConversa.WHATSAPP, NUMERO, "Maria Souza", "Oi")).thenReturn(resposta("Olá!"));
 
 		processador.aceitar(List.of(texto("wamid.1", "Oi")));
 
@@ -65,7 +66,7 @@ class ProcessadorDeMensagensWhatsAppTest {
 
 	@Test
 	void conversaComUmAtendenteNaoGeraRespostaDaLily() {
-		when(chat.receber(any(), any(), any())).thenReturn(new RespostaChat(UUID.randomUUID(), null, StatusConversa.COM_ATENDENTE));
+		when(chat.receber(eq(OrigemConversa.WHATSAPP), any(), any(), any())).thenReturn(new RespostaChat(UUID.randomUUID(), null, StatusConversa.COM_ATENDENTE));
 
 		processador.aceitar(List.of(texto("wamid.1", "Obrigado")));
 
@@ -82,29 +83,29 @@ class ProcessadorDeMensagensWhatsAppTest {
 
 	@Test
 	void aMesmaMensagemEntregueDuasVezesSoEAtendidaUma() {
-		when(chat.receber(any(), any(), any())).thenReturn(resposta("Olá!"));
+		when(chat.receber(eq(OrigemConversa.WHATSAPP), any(), any(), any())).thenReturn(resposta("Olá!"));
 
 		processador.aceitar(List.of(texto("wamid.3", "Oi")));
 		processador.aceitar(List.of(texto("wamid.3", "Oi")));
 
-		verify(chat, times(1)).receber(any(), any(), any());
+		verify(chat, times(1)).receber(any(), any(), any(), any());
 		verify(whatsApp, times(1)).enviarTexto(anyString(), anyString());
 	}
 
 	@Test
 	void mensagensDeUmaMesmaEntregaSaoAtendidasEmOrdem() {
-		when(chat.receber(eq(NUMERO), any(), anyString())).thenReturn(resposta("ok"));
+		when(chat.receber(eq(OrigemConversa.WHATSAPP), eq(NUMERO), any(), anyString())).thenReturn(resposta("ok"));
 
 		processador.aceitar(List.of(texto("wamid.4", "primeira"), texto("wamid.5", "segunda")));
 
 		InOrder ordem = inOrder(chat);
-		ordem.verify(chat).receber(NUMERO, "Maria Souza", "primeira");
-		ordem.verify(chat).receber(NUMERO, "Maria Souza", "segunda");
+		ordem.verify(chat).receber(OrigemConversa.WHATSAPP, NUMERO, "Maria Souza", "primeira");
+		ordem.verify(chat).receber(OrigemConversa.WHATSAPP, NUMERO, "Maria Souza", "segunda");
 	}
 
 	@Test
 	void numeroSemCadastroRecebeAvisoEspecifico() {
-		when(chat.receber(any(), any(), any())).thenThrow(new RecursoNaoEncontradoException("Não há cadastro para este telefone"));
+		when(chat.receber(eq(OrigemConversa.WHATSAPP), any(), any(), any())).thenThrow(new RecursoNaoEncontradoException("Não há cadastro para este telefone"));
 
 		processador.aceitar(List.of(texto("wamid.6", "Oi")));
 
@@ -113,8 +114,8 @@ class ProcessadorDeMensagensWhatsAppTest {
 
 	@Test
 	void falhaInesperadaRecebeDesculpasENaoDerrubaAsProximas() {
-		when(chat.receber(eq(NUMERO), any(), eq("quebra"))).thenThrow(new IllegalStateException("bug"));
-		when(chat.receber(eq(NUMERO), any(), eq("normal"))).thenReturn(resposta("Olá!"));
+		when(chat.receber(eq(OrigemConversa.WHATSAPP), eq(NUMERO), any(), eq("quebra"))).thenThrow(new IllegalStateException("bug"));
+		when(chat.receber(eq(OrigemConversa.WHATSAPP), eq(NUMERO), any(), eq("normal"))).thenReturn(resposta("Olá!"));
 
 		processador.aceitar(List.of(texto("wamid.7", "quebra"), texto("wamid.8", "normal")));
 
@@ -124,8 +125,8 @@ class ProcessadorDeMensagensWhatsAppTest {
 
 	@Test
 	void falhaAoAvisarOClienteNaoPropagaEProximaMensagemSegue() {
-		when(chat.receber(eq(NUMERO), any(), eq("quebra"))).thenThrow(new IllegalStateException("bug"));
-		when(chat.receber(eq(NUMERO), any(), eq("normal"))).thenReturn(resposta("Olá!"));
+		when(chat.receber(eq(OrigemConversa.WHATSAPP), eq(NUMERO), any(), eq("quebra"))).thenThrow(new IllegalStateException("bug"));
+		when(chat.receber(eq(OrigemConversa.WHATSAPP), eq(NUMERO), any(), eq("normal"))).thenReturn(resposta("Olá!"));
 		doThrow(new EnvioNoWhatsAppFalhouException("Meta fora do ar", null)).when(whatsApp)
 				.enviarTexto(NUMERO, ProcessadorDeMensagensWhatsApp.FALHA);
 

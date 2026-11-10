@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.service.ChatServico;
 import br.com.wxnchatbot.backend.service.OrquestradorConversaServico;
 import br.com.wxnchatbot.backend.service.RespostaChat;
@@ -30,10 +31,10 @@ public class ChatController {
 		this.orquestrador = orquestrador;
 	}
 
-	/** Mensagem de um telefone: acha ou abre a conversa dele e devolve a resposta da Lily. */
+	/** Mensagem de um telefone: acha ou abre a conversa dele e devolve a resposta da Lily. Quem usa é o simulador de chat. */
 	@PostMapping("/api/chat/mensagens")
 	public RespostaChat receber(@Valid @RequestBody MensagemDoCanalRequisicao requisicao) {
-		return chat.receber(requisicao.telefone(), requisicao.nome(), requisicao.texto());
+		return chat.receber(OrigemConversa.SIMULADOR, requisicao.telefone(), requisicao.nome(), requisicao.texto());
 	}
 
 	/** Mensagem do cliente numa conversa que já existe. */

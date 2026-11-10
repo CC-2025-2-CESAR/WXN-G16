@@ -12,6 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import br.com.wxnchatbot.backend.canal.whatsapp.EntregaDoWhatsApp.MensagemRecebida;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.service.ChatServico;
 import br.com.wxnchatbot.backend.service.RecursoNaoEncontradoException;
 import br.com.wxnchatbot.backend.service.RespostaChat;
@@ -66,7 +67,7 @@ public class ProcessadorDeMensagensWhatsApp {
 				whatsApp.enviarTexto(mensagem.de(), SO_TEXTO);
 				return;
 			}
-			RespostaChat resposta = chat.receber(mensagem.de(), mensagem.nome(), mensagem.texto());
+			RespostaChat resposta = chat.receber(OrigemConversa.WHATSAPP, mensagem.de(), mensagem.nome(), mensagem.texto());
 			if (resposta.resposta() != null) {
 				whatsApp.enviarTexto(mensagem.de(), resposta.resposta());
 			}

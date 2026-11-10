@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.service.ChatServico;
 import br.com.wxnchatbot.backend.service.OrquestradorConversaServico;
@@ -39,7 +40,7 @@ class ChatControllerTest {
 
 	@Test
 	void mensagemPorTelefoneChamaOChatEDevolveARespostaDaLily() throws Exception {
-		when(chat.receber("5581999990001", "Maria", "Oi")).thenReturn(new RespostaChat(CONVERSA, "Olá!", StatusConversa.COM_CHATBOT));
+		when(chat.receber(OrigemConversa.SIMULADOR, "5581999990001", "Maria", "Oi")).thenReturn(new RespostaChat(CONVERSA, "Olá!", StatusConversa.COM_CHATBOT));
 
 		mvc.perform(post("/api/chat/mensagens").contentType(MediaType.APPLICATION_JSON)
 				.content("{\"telefone\":\"5581999990001\",\"nome\":\"Maria\",\"texto\":\"Oi\"}"))
@@ -51,7 +52,7 @@ class ChatControllerTest {
 
 	@Test
 	void nomeEOpcional() throws Exception {
-		when(chat.receber("81999990001", null, "Oi")).thenReturn(new RespostaChat(CONVERSA, "Olá!", StatusConversa.COM_CHATBOT));
+		when(chat.receber(OrigemConversa.SIMULADOR, "81999990001", null, "Oi")).thenReturn(new RespostaChat(CONVERSA, "Olá!", StatusConversa.COM_CHATBOT));
 
 		mvc.perform(post("/api/chat/mensagens").contentType(MediaType.APPLICATION_JSON)
 				.content("{\"telefone\":\"81999990001\",\"texto\":\"Oi\"}")).andExpect(status().isOk());
@@ -59,7 +60,7 @@ class ChatControllerTest {
 
 	@Test
 	void conversaComUmAtendenteDevolveRespostaNula() throws Exception {
-		when(chat.receber("81999990001", null, "Oi")).thenReturn(new RespostaChat(CONVERSA, null, StatusConversa.COM_ATENDENTE));
+		when(chat.receber(OrigemConversa.SIMULADOR, "81999990001", null, "Oi")).thenReturn(new RespostaChat(CONVERSA, null, StatusConversa.COM_ATENDENTE));
 
 		mvc.perform(post("/api/chat/mensagens").contentType(MediaType.APPLICATION_JSON)
 				.content("{\"telefone\":\"81999990001\",\"texto\":\"Oi\"}"))
@@ -96,7 +97,7 @@ class ChatControllerTest {
 
 	@Test
 	void telefoneSemCadastroDevolve404() throws Exception {
-		when(chat.receber("81999990001", null, "Oi")).thenThrow(new RecursoNaoEncontradoException("Não há cadastro para este telefone"));
+		when(chat.receber(OrigemConversa.SIMULADOR, "81999990001", null, "Oi")).thenThrow(new RecursoNaoEncontradoException("Não há cadastro para este telefone"));
 
 		mvc.perform(post("/api/chat/mensagens").contentType(MediaType.APPLICATION_JSON)
 				.content("{\"telefone\":\"81999990001\",\"texto\":\"Oi\"}"))

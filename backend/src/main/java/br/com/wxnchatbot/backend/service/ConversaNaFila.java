@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.Ticket;
 
 public record ConversaNaFila(
@@ -13,13 +14,14 @@ public record ConversaNaFila(
 		String clienteNome,
 		String clienteTelefone,
 		String motivo,
-		Instant abertoEm) {
+		Instant abertoEm,
+		OrigemConversa origem) {
 
 	static ConversaNaFila de(Conversa conversa, int posicao) {
 		Ticket ticket = conversa.getTicket()
 				.orElseThrow(() -> new IllegalStateException("Conversa na fila sem ticket: " + conversa.getId()));
 		Cliente cliente = conversa.getCliente();
 		return new ConversaNaFila(posicao, conversa.getId(), cliente.getNome(), cliente.getTelefone(),
-				ticket.getMotivo(), ticket.getAbertoEm());
+				ticket.getMotivo(), ticket.getAbertoEm(), conversa.getOrigem());
 	}
 }

@@ -27,6 +27,7 @@ import br.com.wxnchatbot.backend.model.Chatbot;
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
 import br.com.wxnchatbot.backend.model.Empresa;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.repository.ChatbotRepositorio;
 import br.com.wxnchatbot.backend.repository.ClienteRepositorio;
@@ -82,7 +83,7 @@ class ChatServicoTest {
 		when(chatbots.findFirstByAtivoTrueOrderByIdAsc()).thenReturn(Optional.of(lily));
 		when(orquestrador.processarTurno(any(), eq("Oi"))).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
 
-		RespostaChat resposta = servico(EMPRESA_PADRAO).receber("5581999990101", "Maria", "Oi");
+		RespostaChat resposta = servico(EMPRESA_PADRAO).receber(OrigemConversa.SIMULADOR, "5581999990101", "Maria", "Oi");
 
 		ArgumentCaptor<Conversa> nova = ArgumentCaptor.forClass(Conversa.class);
 		verify(conversas).save(nova.capture());
@@ -94,6 +95,36 @@ class ChatServicoTest {
 	}
 
 	@Test
+	void conversaNovaNasceComAOrigemDoCanal() {
+		Cliente maria = cliente(empresa, "81999990101");
+		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of(maria));
+		when(conversas.findFirstByClienteIdAndStatusNotOrderByIniciadaEmDesc(maria.getId(), StatusConversa.ENCERRADA))
+				.thenReturn(Optional.empty());
+		when(chatbots.findFirstByAtivoTrueOrderByIdAsc()).thenReturn(Optional.of(lily));
+		when(orquestrador.processarTurno(any(), eq("Oi"))).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
+
+		servico(EMPRESA_PADRAO).receber(OrigemConversa.WHATSAPP, "81999990101", null, "Oi");
+
+		ArgumentCaptor<Conversa> nova = ArgumentCaptor.forClass(Conversa.class);
+		verify(conversas).save(nova.capture());
+		assertEquals(OrigemConversa.WHATSAPP, nova.getValue().getOrigem());
+	}
+
+	@Test
+	void conversaJaAbertaMantemAOrigemQueTinha() {
+		Cliente maria = cliente(empresa, "81999990101");
+		Conversa aberta = new Conversa(maria, lily, OrigemConversa.DEMONSTRACAO);
+		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of(maria));
+		when(conversas.findFirstByClienteIdAndStatusNotOrderByIniciadaEmDesc(maria.getId(), StatusConversa.ENCERRADA))
+				.thenReturn(Optional.of(aberta));
+		when(orquestrador.processarTurno(aberta.getId(), "Oi")).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
+
+		servico("").receber(OrigemConversa.SIMULADOR, "81999990101", null, "Oi");
+
+		assertEquals(OrigemConversa.DEMONSTRACAO, aberta.getOrigem());
+	}
+
+	@Test
 	void conversaEmAbertoContinua() {
 		Cliente maria = cliente(empresa, "81999990101");
 		Conversa aberta = new Conversa(maria, lily);
@@ -102,7 +133,7 @@ class ChatServicoTest {
 				.thenReturn(Optional.of(aberta));
 		when(orquestrador.processarTurno(aberta.getId(), "Oi")).thenReturn(new ResultadoTurno(null, StatusConversa.COM_ATENDENTE));
 
-		RespostaChat resposta = servico("").receber("81999990101", null, "Oi");
+		RespostaChat resposta = servico("").receber(OrigemConversa.SIMULADOR, "81999990101", null, "Oi");
 
 		assertEquals(aberta.getId(), resposta.conversaId());
 		assertEquals(StatusConversa.COM_ATENDENTE, resposta.status());
@@ -113,7 +144,7 @@ class ChatServicoTest {
 	void procuraOTelefoneEmTodasAsFormasQueOWhatsAppEOCadastroUsam() {
 		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of());
 
-		assertThrows(RecursoNaoEncontradoException.class, () -> servico("").receber("558199990101", null, "Oi"));
+		assertThrows(RecursoNaoEncontradoException.class, () -> servico("").receber(OrigemConversa.SIMULADOR, "558199990101", null, "Oi"));
 
 		@SuppressWarnings("unchecked")
 		ArgumentCaptor<java.util.Collection<String>> procurados = ArgumentCaptor.forClass(java.util.Collection.class);
@@ -126,7 +157,7 @@ class ChatServicoTest {
 		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of());
 
 		RecursoNaoEncontradoException erro = assertThrows(RecursoNaoEncontradoException.class,
-				() -> servico("  ").receber("81999990101", "Maria", "Oi"));
+				() -> servico("  ").receber(OrigemConversa.SIMULADOR, "81999990101", "Maria", "Oi"));
 
 		assertEquals("Não há cadastro para este telefone", erro.getMessage());
 		verify(clientes, never()).save(any());
@@ -142,7 +173,7 @@ class ChatServicoTest {
 		when(chatbots.findFirstByAtivoTrueOrderByIdAsc()).thenReturn(Optional.of(lily));
 		when(orquestrador.processarTurno(any(), any())).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
 
-		servico(EMPRESA_PADRAO).receber("+55 (81) 99999-0101", "  Maria Souza ", "Oi");
+		servico(EMPRESA_PADRAO).receber(OrigemConversa.SIMULADOR, "+55 (81) 99999-0101", "  Maria Souza ", "Oi");
 
 		ArgumentCaptor<Cliente> novo = ArgumentCaptor.forClass(Cliente.class);
 		verify(clientes).save(novo.capture());
@@ -162,7 +193,7 @@ class ChatServicoTest {
 		when(chatbots.save(any(Chatbot.class))).thenAnswer(chamada -> chamada.getArgument(0));
 		when(orquestrador.processarTurno(any(), any())).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
 
-		servico(EMPRESA_PADRAO).receber("81999990101", null, "Oi");
+		servico(EMPRESA_PADRAO).receber(OrigemConversa.SIMULADOR, "81999990101", null, "Oi");
 
 		ArgumentCaptor<Empresa> criada = ArgumentCaptor.forClass(Empresa.class);
 		verify(empresas).save(criada.capture());
@@ -186,7 +217,7 @@ class ChatServicoTest {
 				.thenReturn(Optional.of(aberta));
 		when(orquestrador.processarTurno(any(), any())).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
 
-		RespostaChat resposta = servico(EMPRESA_PADRAO).receber("81999990101", null, "Oi");
+		RespostaChat resposta = servico(EMPRESA_PADRAO).receber(OrigemConversa.SIMULADOR, "81999990101", null, "Oi");
 
 		assertEquals(aberta.getId(), resposta.conversaId());
 	}
@@ -198,7 +229,7 @@ class ChatServicoTest {
 		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of(umCliente, outroCliente));
 
 		IllegalStateException erro = assertThrows(IllegalStateException.class,
-				() -> servico(EMPRESA_PADRAO).receber("81999990101", null, "Oi"));
+				() -> servico(EMPRESA_PADRAO).receber(OrigemConversa.SIMULADOR, "81999990101", null, "Oi"));
 
 		assertEquals("O telefone está cadastrado em mais de uma empresa", erro.getMessage());
 		verify(orquestrador, never()).processarTurno(any(UUID.class), any());
@@ -209,7 +240,7 @@ class ChatServicoTest {
 		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of());
 		when(empresas.findFirstByNomeOrderByIdAsc(EMPRESA_PADRAO)).thenReturn(Optional.of(empresa));
 
-		assertThrows(IllegalArgumentException.class, () -> servico(EMPRESA_PADRAO).receber("123", null, "Oi"));
+		assertThrows(IllegalArgumentException.class, () -> servico(EMPRESA_PADRAO).receber(OrigemConversa.SIMULADOR, "123", null, "Oi"));
 	}
 
 	@Test
@@ -221,7 +252,7 @@ class ChatServicoTest {
 		when(chatbots.findFirstByAtivoTrueOrderByIdAsc()).thenReturn(Optional.of(lily));
 		when(orquestrador.processarTurno(any(), any())).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
 
-		servico(EMPRESA_PADRAO, ID_EMPRESA_PADRAO.toString()).receber("81999990101", null, "Oi");
+		servico(EMPRESA_PADRAO, ID_EMPRESA_PADRAO.toString()).receber(OrigemConversa.SIMULADOR, "81999990101", null, "Oi");
 
 		ArgumentCaptor<Cliente> novo = ArgumentCaptor.forClass(Cliente.class);
 		verify(clientes).save(novo.capture());
@@ -239,7 +270,7 @@ class ChatServicoTest {
 		when(chatbots.findFirstByAtivoTrueOrderByIdAsc()).thenReturn(Optional.of(lily));
 		when(orquestrador.processarTurno(any(), any())).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
 
-		servico(EMPRESA_PADRAO, ID_EMPRESA_PADRAO.toString()).receber("81999990101", null, "Oi");
+		servico(EMPRESA_PADRAO, ID_EMPRESA_PADRAO.toString()).receber(OrigemConversa.SIMULADOR, "81999990101", null, "Oi");
 
 		ArgumentCaptor<Empresa> criada = ArgumentCaptor.forClass(Empresa.class);
 		verify(empresas).save(criada.capture());
@@ -258,7 +289,7 @@ class ChatServicoTest {
 				.thenReturn(Optional.of(aberta));
 		when(orquestrador.processarTurno(any(), any())).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
 
-		RespostaChat resposta = servico(EMPRESA_PADRAO, ID_EMPRESA_PADRAO.toString()).receber("81999990101", null, "Oi");
+		RespostaChat resposta = servico(EMPRESA_PADRAO, ID_EMPRESA_PADRAO.toString()).receber(OrigemConversa.SIMULADOR, "81999990101", null, "Oi");
 
 		assertEquals(aberta.getId(), resposta.conversaId());
 	}
