@@ -55,6 +55,16 @@ export function Sidebar({
           <span>Fila de conversas</span>
           <b>{count ?? "—"}</b>
         </button>
+        <button
+          title="Simulador de WhatsApp (teste da Lily)"
+          className="nav-item"
+          onClick={() => {
+            window.location.hash = "#/simulador";
+          }}
+        >
+          <Icon name="messages" />
+          <span>Simulador de chat</span>
+        </button>
         <button title="Histórico (em breve)" className="nav-item" disabled>
           <Icon name="history" />
           <span>Histórico</span>
