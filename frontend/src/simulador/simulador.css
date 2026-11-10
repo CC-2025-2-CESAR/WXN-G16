@@ -1,0 +1,540 @@
+/* Simulador de WhatsApp. Tudo com o prefixo sim- para não colidir com o dashboard. */
+
+.sim-pagina {
+  --wa-topo: #008069;
+  --wa-fundo: #efeae2;
+  --wa-cliente: #d9fdd3;
+  --wa-barra: #f0f2f5;
+  --wa-texto: #111b21;
+  --wa-suave: #54656f;
+  /* O cinza do dashboard fica abaixo de 4,5:1 sobre o fundo lavanda; aqui o texto de apoio precisa ser mais escuro. */
+  --muted: #6b5f7a;
+  min-height: 100dvh;
+  padding: 28px 20px 48px;
+  background: #f8f6fd;
+  color: #302746;
+}
+
+.sim-cabecalho,
+.sim-cliente,
+.sim-grade {
+  max-width: 1040px;
+  margin-inline: auto;
+}
+
+.sim-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.sim-cabecalho h1 {
+  margin: 6px 0 4px;
+  font: 800 28px "Manrope", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.sim-cabecalho p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.sim-voltar {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sim-voltar:hover {
+  text-decoration: underline;
+}
+
+/* Cliente simulado */
+
+.sim-cliente {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.sim-cliente label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.sim-cliente input {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #d9d0e8;
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+}
+
+.sim-cliente input[aria-invalid="true"] {
+  border-color: #c0392b;
+}
+
+.sim-erro-campo {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #b3261e;
+}
+
+.sim-botao {
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 650;
+}
+
+.sim-botao:hover:not(:disabled) {
+  background: #6040cc;
+}
+
+.sim-botao--suave {
+  background: #efe9fb;
+  color: #4a33a8;
+}
+
+.sim-botao--suave:hover:not(:disabled) {
+  background: #e3d9f8;
+}
+
+/* Grade: celular à esquerda e apoio ao teste à direita, na mesma ordem do HTML (e do foco por teclado) */
+
+.sim-grade {
+  display: grid;
+  grid-template-columns: 400px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.sim-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sim-lateral section {
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.sim-lateral h2 {
+  margin: 0 0 6px;
+  font: 750 16px "Manrope", sans-serif;
+}
+
+.sim-lateral p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.sim-lateral a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.sim-exemplos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sim-exemplos button {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #faf8fe;
+  text-align: left;
+}
+
+.sim-exemplos button:hover:not(:disabled) {
+  background: #efe9fb;
+}
+
+.sim-estado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sim-estado small {
+  color: var(--muted);
+}
+
+.sim-pilula {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #ece9f3;
+  color: #4b4260;
+  font-weight: 650;
+}
+
+.sim-pilula--COM_CHATBOT {
+  background: #e3f6ea;
+  color: #14683a;
+}
+
+.sim-pilula--AGUARDANDO_ATENDENTE {
+  background: #fff1d6;
+  color: #85520a;
+}
+
+.sim-pilula--COM_ATENDENTE {
+  background: #e3ecfd;
+  color: #1f47a8;
+}
+
+/* Celular */
+
+.sim-celular {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: min(720px, calc(100dvh - 48px));
+  min-height: 480px;
+  overflow: hidden;
+  border: 9px solid #2a2140;
+  border-radius: 38px;
+  background: var(--wa-fundo);
+  box-shadow: 0 24px 48px rgba(48, 39, 70, 0.22);
+  color: var(--wa-texto);
+  position: sticky;
+  top: 24px;
+}
+
+.sim-topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--wa-topo);
+  color: #fff;
+}
+
+.sim-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a383ec, #7151df);
+  font: 800 17px "Manrope", sans-serif;
+}
+
+.sim-contato {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sim-contato strong {
+  font-size: 15px;
+}
+
+.sim-contato small,
+.sim-quem small {
+  font-size: 12px;
+}
+
+.sim-quem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-left: auto;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sim-conversa {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 12px 8px;
+  overflow-y: auto;
+  background-color: var(--wa-fundo);
+  background-image: radial-gradient(rgba(11, 20, 26, 0.045) 1px, transparent 1px);
+  background-size: 18px 18px;
+  overscroll-behavior: contain;
+}
+
+.sim-dia {
+  align-self: center;
+  margin: 8px 0;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  color: var(--wa-suave);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sim-aviso {
+  align-self: center;
+  max-width: 92%;
+  margin: 6px 0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  color: var(--wa-suave);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.sim-aviso--simulador {
+  background: #ffeecd;
+}
+
+.sim-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 84%;
+  padding: 6px 9px 5px;
+  border-radius: 10px;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  font-size: 14.2px;
+  line-height: 1.38;
+}
+
+.sim-msg--cliente {
+  align-self: flex-end;
+  border-top-right-radius: 2px;
+  background: var(--wa-cliente);
+}
+
+.sim-msg--lily {
+  align-self: flex-start;
+  border-top-left-radius: 2px;
+  background: #fff;
+}
+
+.sim-texto {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sim-meta {
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+  gap: 4px;
+  margin-top: 2px;
+  color: var(--wa-suave);
+  font-size: 11.5px;
+}
+
+.sim-selo {
+  width: 15px;
+  height: 11px;
+  fill: none;
+  stroke: var(--wa-suave);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sim-selo--lida {
+  stroke: #1e88c7;
+}
+
+.sim-selo--falhou {
+  stroke: #b3261e;
+}
+
+.sim-reenviar {
+  align-self: flex-end;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border: 1px solid #b3261e;
+  border-radius: 8px;
+  background: #fff;
+  color: #b3261e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sim-digitando {
+  flex-direction: row;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.sim-digitando i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8696a0;
+  animation: sim-pulso 1.2s infinite ease-in-out;
+}
+
+.sim-digitando i:nth-of-type(2) {
+  animation-delay: 0.15s;
+}
+
+.sim-digitando i:nth-of-type(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes sim-pulso {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.sim-lento,
+.sim-erro {
+  margin: 0;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.sim-lento {
+  background: #fff3c4;
+  color: #5c4300;
+}
+
+.sim-erro {
+  background: #fde4e1;
+  color: #8c1d18;
+}
+
+.sim-entrada {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--wa-barra);
+}
+
+.sim-entrada textarea {
+  flex: 1;
+  min-width: 0;
+  max-height: 120px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+  color: var(--wa-texto);
+  font-size: 14.5px;
+  line-height: 1.3;
+  resize: none;
+}
+
+.sim-entrada textarea:focus-visible {
+  outline: 2px solid var(--wa-topo);
+  outline-offset: 2px;
+}
+
+.sim-enviar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--wa-topo);
+  color: #fff;
+}
+
+.sim-enviar svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.sim-enviar[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.sim-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.sim-conversa:focus-visible {
+  outline: 3px solid #a383ec;
+  outline-offset: -3px;
+}
+
+@media (max-width: 900px) {
+  .sim-pagina {
+    padding: 20px 12px 40px;
+  }
+
+  .sim-cliente {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sim-cliente label {
+    grid-column: 1 / -1;
+  }
+
+  .sim-grade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sim-celular {
+    /* relative (e não static): é o que prende o texto oculto .sim-sr dentro do celular. */
+    position: relative;
+    height: min(640px, calc(100dvh - 32px));
+    max-width: 440px;
+    margin-inline: auto;
+  }
+
+  /* 16 px evita o zoom automático do iPhone ao tocar num campo. */
+  .sim-entrada textarea,
+  .sim-cliente input {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-digitando i {
+    animation: none;
+    opacity: 0.7;
+  }
+}

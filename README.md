@@ -301,6 +301,7 @@ WXN-G16/
 │   ├── chatbot-lily.md        Como a Lily decide (intenção, triagem, encaminhamento) e como ligar a LLM
 │   ├── whatsapp.md            Webhook e envio pela Cloud API da Meta: variáveis, configuração e limites
 │   ├── ui-fila-atendimento.md  Tela da fila: como subir com dados de demonstração
+│   ├── simulador-chat.md      Simulador de WhatsApp: conversar com a Lily sem a Meta
 │   └── status-e-roadmap.md    Diagnóstico do projeto, riscos, escopo do
 │                               PoC do SR2 e roadmap até lá
 ├── .env.example
