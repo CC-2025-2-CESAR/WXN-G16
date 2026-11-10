@@ -27,7 +27,7 @@ passa a `AGUARDANDO_ATENDENTE` pelo `TicketServico` (que calcula a urgência e o
 | `ABRIR_CHAMADO` | Pede os detalhes (se a mensagem for vaga), mostra título e descrição e pergunta "Posso confirmar?". **Só abre depois de um "sim" claro** |
 | `DUVIDA` | Responde pela LLM, com o prompt da Lily mais a base de conhecimento (`resources/conhecimento/base-wxn.md`). Também cobre cumprimentos e agradecimentos |
 | `FALAR_COM_HUMANO` | Responde e coloca a conversa na fila com um ticket |
-| `FORA_DE_ESCOPO` | Recusa com gentileza, sem LLM |
+| `FORA_DE_ESCOPO` | Recusa com gentileza (o texto vem do `Redator`, veja "Quem escreve as respostas") |
 | `INCERTO` | Encaminha para um atendente ("na dúvida, chame um humano") |
 
 Abaixo do limiar de confiança (`chatbot.intencao.limiar-confianca`, 0,7) qualquer intenção vira `INCERTO`.
@@ -56,9 +56,31 @@ confirma; qualquer "não", "cancela" ou "deixa" cancela. O pedido pendente vale 
 `ClassificadorDeIntencao` tem duas implementações, escolhidas por `chatbot.llm`:
 
 * **`fake`** (padrão): só `ClassificadorPorRegras` (palavras-chave) e `LlmClientFake` (resposta fixa). Não gasta cota.
-* **`gemini`**: `ClassificadorComLlm`. As regras decidem sozinhas quando são claras (pedir atendente, citar protocolo,
-  "abrir um chamado"), sem chamar a LLM. O resto vai ao Gemini, que devolve um JSON `{intencao, confianca, descricaoSuficiente}`. Se o Gemini
-  falhar ou devolver algo inválido, valem as regras.
+* **`gemini`**: `ClassificadorComLlm`. **Toda** mensagem vai ao Gemini, que devolve um JSON
+  `{intencao, confianca, descricaoSuficiente}`. Não há atalho por palavra-chave antes dele: um atalho decidia "consultar
+  demanda" só porque a frase tinha "protocolo", mesmo numa pergunta como "para que serve esse protocolo?". Se o Gemini
+  falhar ou devolver algo inválido, valem as regras (`ClassificadorPorRegras`).
+
+## Quem escreve as respostas
+
+O código decide **o que** a Lily faz e traz os **fatos** (protocolo, status, datas, título do chamado) num rascunho. Quem
+escolhe as **palavras** é o `Redator`, também escolhido por `chatbot.llm`:
+
+* **`fake`**: `RedatorPorModelos` devolve o rascunho, os textos prontos de `RoteadorDeIntencao`. É o que os testes usam.
+* **`gemini`**: `RedatorComLlm` pede ao Gemini que escreva a mensagem a partir do rascunho, acompanhando o assunto da
+  conversa. As dúvidas (`DUVIDA`) já eram escritas pelo Gemini com a base de conhecimento.
+
+O Gemini não pode mudar os fatos. Se o texto dele perder um protocolo, uma data, um status ou um título entre aspas do
+rascunho, citar um protocolo que não está nele, deixar de perguntar quando o rascunho pergunta (a confirmação do chamado),
+vier vazio ou passar de 800 caracteres, vale o rascunho. Se o Gemini estiver fora do ar, também. Assim os dados continuam
+vindo só das ferramentas, e a conversa nunca para por falha da LLM.
+
+Como o texto da Lily deixou de ser fixo, o roteador não reconhece mais "a pergunta que ela acabou de fazer" pelo texto:
+ele guarda em memória que pediu o protocolo ou os detalhes, e só vale para a **próxima** mensagem do cliente.
+
+**Custo:** com `gemini`, cada mensagem gasta **duas chamadas** (classificar e escrever). O "sim" e o "não" da confirmação
+de um chamado gastam uma só, porque quem os interpreta é o código. Confira a cota do plano grátis antes de uma
+demonstração longa.
 
 Dá para trocar por outro classificador (por exemplo um modelo próprio para decisões, como o Jev) implementando
 `ClassificadorDeIntencao` e marcando o bean como `@Primary`. O roteador não muda.
