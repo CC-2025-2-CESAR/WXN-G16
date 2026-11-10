@@ -1,6 +1,7 @@
 package br.com.wxnchatbot.backend.chatbot;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -108,6 +110,30 @@ class ClassificadorComLlmTest {
 		when(llm.responderEmJson(any(), any(), any())).thenReturn("{\"intencao\":\"COMPRAR_PIZZA\",\"confianca\":1}");
 
 		assertEquals(Intencao.DUVIDA, classificador.classificar(conversa("Boa tarde")).intencao());
+	}
+
+	@Test
+	void leOQueALlmAchouDosDetalhesDoChamado() {
+		assertEquals(Boolean.TRUE, classificador
+				.interpretar("{\"intencao\":\"ABRIR_CHAMADO\",\"confianca\":0.9,\"descricaoSuficiente\":true}").descricaoSuficiente());
+		assertEquals(Boolean.FALSE, classificador
+				.interpretar("{\"intencao\":\"ABRIR_CHAMADO\",\"confianca\":0.9,\"descricaoSuficiente\":false}").descricaoSuficiente());
+	}
+
+	@Test
+	void semOuComValorInvalidoOsDetalhesFicamSemOpiniao() {
+		assertNull(classificador.interpretar("{\"intencao\":\"ABRIR_CHAMADO\",\"confianca\":0.9}").descricaoSuficiente());
+		assertNull(classificador.interpretar("{\"intencao\":\"ABRIR_CHAMADO\",\"confianca\":0.9,\"descricaoSuficiente\":\"sim\"}")
+				.descricaoSuficiente());
+	}
+
+	@Test
+	void oPromptEOEsquemaPedemAAvaliacaoDosDetalhes() {
+		assertTrue(ClassificadorComLlm.PROMPT.contains("descricaoSuficiente"));
+		@SuppressWarnings("unchecked")
+		Map<String, Object> propriedades = (Map<String, Object>) ClassificadorComLlm.ESQUEMA.get("properties");
+		assertTrue(propriedades.containsKey("descricaoSuficiente"));
+		assertEquals(List.of("intencao", "confianca"), ClassificadorComLlm.ESQUEMA.get("required"));
 	}
 
 	@Test

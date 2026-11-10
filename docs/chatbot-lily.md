@@ -24,13 +24,26 @@ passa a `AGUARDANDO_ATENDENTE` pelo `TicketServico` (que calcula a urgência e o
 | Intenção | O que a Lily faz |
 |---|---|
 | `CONSULTAR_DEMANDA` | Acha o protocolo na mensagem (regex, nunca a LLM) e chama `ConsultaDemandaFerramenta`. Sem protocolo, pede. Se o cliente responde que não tem, encaminha |
-| `ABRIR_CHAMADO` | Pede os detalhes (se a mensagem for curta), mostra título e descrição e pergunta "Posso confirmar?". **Só abre depois de um "sim" claro** |
+| `ABRIR_CHAMADO` | Pede os detalhes (se a mensagem for vaga), mostra título e descrição e pergunta "Posso confirmar?". **Só abre depois de um "sim" claro** |
 | `DUVIDA` | Responde pela LLM, com o prompt da Lily mais a base de conhecimento (`resources/conhecimento/base-wxn.md`). Também cobre cumprimentos e agradecimentos |
 | `FALAR_COM_HUMANO` | Responde e coloca a conversa na fila com um ticket |
 | `FORA_DE_ESCOPO` | Recusa com gentileza, sem LLM |
 | `INCERTO` | Encaminha para um atendente ("na dúvida, chame um humano") |
 
 Abaixo do limiar de confiança (`chatbot.intencao.limiar-confianca`, 0,7) qualquer intenção vira `INCERTO`.
+
+### Quando a Lily pede detalhes antes de propor o chamado
+
+"Preciso de ajuda com aquele problema do relatório" é vago: abrir um chamado com isso só dá trabalho a quem recebe. Por
+isso a Lily pergunta "Me conta o que está acontecendo" antes de mostrar o resumo, e basta **um** destes dois olhares
+achar pouco para ela perguntar:
+
+* as palavras (`DetalhesDoChamado`): conta palavras que dizem alguma coisa, sem artigos, pedidos de ajuda, "aquele
+  problema", "sistema" e afins. Menos de 3 = vago. Vale para as regras e é o que sobra quando o Gemini falha;
+* o Gemini, que devolve `descricaoSuficiente` (verdadeiro/falso) junto com a intenção.
+
+Depois de perguntar uma vez, ela aceita o que o cliente mandar. A lista de palavras e o limite de 3 são pontos de
+partida: ajuste com mensagens reais (tarefa IA-07).
 
 ### Por que o chamado não passa pela LLM
 
@@ -44,7 +57,7 @@ confirma; qualquer "não", "cancela" ou "deixa" cancela. O pedido pendente vale 
 
 * **`fake`** (padrão): só `ClassificadorPorRegras` (palavras-chave) e `LlmClientFake` (resposta fixa). Não gasta cota.
 * **`gemini`**: `ClassificadorComLlm`. As regras decidem sozinhas quando são claras (pedir atendente, citar protocolo,
-  "abrir um chamado"), sem chamar a LLM. O resto vai ao Gemini, que devolve um JSON `{intencao, confianca}`. Se o Gemini
+  "abrir um chamado"), sem chamar a LLM. O resto vai ao Gemini, que devolve um JSON `{intencao, confianca, descricaoSuficiente}`. Se o Gemini
   falhar ou devolver algo inválido, valem as regras.
 
 Dá para trocar por outro classificador (por exemplo um modelo próprio para decisões, como o Jev) implementando

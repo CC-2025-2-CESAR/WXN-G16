@@ -176,6 +176,56 @@ class RoteadorDeIntencaoTest {
 	}
 
 	@Test
+	void mensagemVagaPedeDetalhesMesmoSendoLonga() {
+		DecisaoDoTurno decisao = turno("Quero abrir um chamado para aquele problema do relatório",
+				ResultadoIntencao.certa(Intencao.ABRIR_CHAMADO));
+
+		assertEquals(new Responder(RoteadorDeIntencao.PEDIR_DETALHES), decisao);
+		verifyNoInteractions(solicitacaoChamado);
+	}
+
+	@Test
+	void classificadorQueAchaADescricaoInsuficientePedeDetalhesMesmoComPalavrasDeSobra() {
+		DecisaoDoTurno decisao = turno("Preciso de um chamado: a nota fiscal trava na assinatura desde ontem",
+				new ResultadoIntencao(Intencao.ABRIR_CHAMADO, 0.9, false));
+
+		assertEquals(new Responder(RoteadorDeIntencao.PEDIR_DETALHES), decisao);
+		verifyNoInteractions(solicitacaoChamado);
+	}
+
+	@Test
+	void classificadorQueAchaADescricaoSuficienteNaoLiberaMensagemVaga() {
+		DecisaoDoTurno decisao = turno("Quero abrir um chamado para aquele problema do relatório",
+				new ResultadoIntencao(Intencao.ABRIR_CHAMADO, 0.9, true));
+
+		assertEquals(new Responder(RoteadorDeIntencao.PEDIR_DETALHES), decisao);
+	}
+
+	@Test
+	void descricaoSuficienteParaOClassificadorEParaAsPalavrasViraPedidoDeConfirmacao() {
+		when(solicitacaoChamado.solicitarAbertura(any(), any(), anyString(), anyString()))
+				.thenReturn(new PedidoDeConfirmacao(conversa.getId(), "t", "d", Instant.now()));
+
+		DecisaoDoTurno decisao = turno("O relatório de vendas não carrega desde a atualização de ontem",
+				new ResultadoIntencao(Intencao.ABRIR_CHAMADO, 0.95, true));
+
+		assertInstanceOf(Responder.class, decisao);
+		verify(solicitacaoChamado).solicitarAbertura(any(), any(), anyString(), anyString());
+	}
+
+	@Test
+	void depoisDePedirDetalhesAceitaATentativaDoClienteMesmoVaga() {
+		lilyDisse(RoteadorDeIntencao.PEDIR_DETALHES);
+		when(solicitacaoChamado.solicitarAbertura(any(), any(), anyString(), anyString()))
+				.thenReturn(new PedidoDeConfirmacao(conversa.getId(), "t", "d", Instant.now()));
+
+		DecisaoDoTurno decisao = turno("o relatório", new ResultadoIntencao(Intencao.ABRIR_CHAMADO, 0.9, false));
+
+		assertInstanceOf(Responder.class, decisao);
+		verify(solicitacaoChamado).solicitarAbertura(any(), any(), anyString(), anyString());
+	}
+
+	@Test
 	void simDepoisDoPedidoAbreOChamadoEDevolveOProtocolo() {
 		conversa.adicionarMensagem(conversa.getCliente(), "sim");
 		when(confirmacaoChamado.temPedidoPendente(EMPRESA.getId(), conversa.getId())).thenReturn(true);
