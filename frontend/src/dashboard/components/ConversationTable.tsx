@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { ConversaNaFila, EmAtendimento } from "../../types/fila";
+import type {
+  ConversaNaFila,
+  EmAtendimento,
+  OrigemConversa,
+} from "../../types/fila";
+import { SeloDeOrigem } from "../../components/SeloDeOrigem";
 import { esperaDesde, formatarTelefone, hora, iniciais } from "../formato";
 import { Icon, type IconName } from "../icons";
 
@@ -20,6 +25,7 @@ type Linha = {
   id: string;
   nome: string;
   telefone: string;
+  origem: OrigemConversa;
   motivo: string;
   status: "waiting" | "active";
   rotulo: string;
@@ -113,6 +119,7 @@ export function ConversationTable({
           id: c.conversaId,
           nome: c.clienteNome,
           telefone: c.clienteTelefone,
+          origem: c.origem,
           motivo: c.motivo,
           status: "waiting",
           rotulo: `${c.posicao}º na fila`,
@@ -123,6 +130,7 @@ export function ConversationTable({
           id: a.detalhe.conversaId,
           nome: a.detalhe.clienteNome,
           telefone: a.detalhe.clienteTelefone,
+          origem: a.detalhe.origem,
           motivo: a.detalhe.motivo,
           status: "active",
           rotulo: "Em atendimento",
@@ -240,6 +248,7 @@ export function ConversationTable({
                     <div className="client-info">
                       <strong>{c.nome}</strong>
                       <small>{formatarTelefone(c.telefone)}</small>
+                      <SeloDeOrigem origem={c.origem} />
                     </div>
                   </div>
                 </td>

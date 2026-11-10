@@ -62,10 +62,23 @@ public class Conversa {
 	@Column(name = "encerrada_em")
 	private Instant encerradaEm;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "origem", nullable = false)
+	private OrigemConversa origem = OrigemConversa.DEMONSTRACAO;
+
 	protected Conversa() {
 	}
 
+	/**
+	 * Conversa de {@link OrigemConversa#DEMONSTRACAO}: quem cria uma conversa de um canal de verdade (simulador,
+	 * WhatsApp) diz a origem no outro construtor, e esquecer nunca faz um dado fictício passar por real.
+	 */
 	public Conversa(Cliente cliente, Chatbot chatbot) {
+		this(cliente, chatbot, OrigemConversa.DEMONSTRACAO);
+	}
+
+	public Conversa(Cliente cliente, Chatbot chatbot, OrigemConversa origem) {
+		this.origem = Objects.requireNonNull(origem, "origem é obrigatória");
 		this.cliente = Objects.requireNonNull(cliente, "cliente é obrigatório");
 		this.empresa = this.cliente.getEmpresa();
 		this.chatbot = Objects.requireNonNull(chatbot, "chatbot é obrigatório");
@@ -166,6 +179,10 @@ public class Conversa {
 
 	public StatusConversa getStatus() {
 		return status;
+	}
+
+	public OrigemConversa getOrigem() {
+		return origem;
 	}
 
 	public Instant getIniciadaEm() {

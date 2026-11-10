@@ -178,7 +178,7 @@ components:
   schemas:
     ConversaNaFila:
       type: object
-      required: [posicao, conversaId, clienteNome, clienteTelefone, motivo, abertoEm]
+      required: [posicao, conversaId, clienteNome, clienteTelefone, motivo, abertoEm, origem]
       properties:
         posicao:
           type: integer
@@ -201,9 +201,11 @@ components:
           type: string
           format: date-time
           description: Quando o cliente pediu atendimento humano
+        origem:
+          $ref: '#/components/schemas/OrigemConversa'
     DetalheConversaFila:
       type: object
-      required: [conversaId, clienteNome, clienteTelefone, motivo, abertoEm, mensagens]
+      required: [conversaId, clienteNome, clienteTelefone, motivo, abertoEm, origem, mensagens]
       properties:
         conversaId:
           type: string
@@ -217,10 +219,19 @@ components:
         abertoEm:
           type: string
           format: date-time
+        origem:
+          $ref: '#/components/schemas/OrigemConversa'
         mensagens:
           type: array
           items:
             $ref: '#/components/schemas/Mensagem'
+    OrigemConversa:
+      type: string
+      enum: [DEMONSTRACAO, SIMULADOR, WHATSAPP]
+      description: |
+        De onde a conversa veio. DEMONSTRACAO são os dados fictícios do perfil `demo`; SIMULADOR é um teste escrito por
+        alguém do grupo no simulador de WhatsApp (ou pela API de chat); WHATSAPP é um cliente de verdade. A tela mostra um
+        selo com esse valor.
     Mensagem:
       type: object
       required: [tipoRemetente, conteudo, enviadaEm]

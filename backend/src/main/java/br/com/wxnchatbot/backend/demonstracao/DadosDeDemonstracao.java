@@ -12,12 +12,14 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import br.com.wxnchatbot.backend.integracao.wxn.mock.MockWxnDados;
 import br.com.wxnchatbot.backend.model.Atendente;
 import br.com.wxnchatbot.backend.model.Chatbot;
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
 import br.com.wxnchatbot.backend.model.Empresa;
 import br.com.wxnchatbot.backend.model.Mensagem;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.Remetente;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.service.FilaConversasServico;
@@ -111,7 +113,7 @@ public class DadosDeDemonstracao implements CommandLineRunner {
 			return;
 		}
 		Instant agora = Instant.now();
-		Empresa empresa = persistir(new Empresa(NOME_EMPRESA));
+		Empresa empresa = persistir(new Empresa(MockWxnDados.EMPRESA_DEMO, NOME_EMPRESA));
 		Chatbot lily = persistir(new Chatbot("Lily", "Oi, eu sou a Lily, assistente virtual da WXN. Como posso ajudar?"));
 		Atendente ana = persistir(new Atendente("Ana Martins", "ana.martins" + DOMINIO_EMAIL));
 		persistir(new Atendente("Paulo Mendes", "paulo.mendes" + DOMINIO_EMAIL));
@@ -154,7 +156,7 @@ public class DadosDeDemonstracao implements CommandLineRunner {
 
 	private Conversa iniciar(Empresa empresa, Chatbot lily, Cenario cenario) {
 		Cliente cliente = persistir(new Cliente(empresa, cenario.nome(), cenario.telefone()));
-		Conversa conversa = persistir(new Conversa(cliente, lily));
+		Conversa conversa = persistir(new Conversa(cliente, lily, OrigemConversa.DEMONSTRACAO));
 		lily.saudar(conversa);
 		for (Fala fala : cenario.falas()) {
 			Remetente remetente = fala.doCliente() ? cliente : lily;

@@ -37,6 +37,22 @@ class ConversaTest {
 	}
 
 	@Test
+	void semDizerAOrigemAConversaEDeDemonstracaoParaNaoPassarPorReal() {
+		assertEquals(OrigemConversa.DEMONSTRACAO, conversa.getOrigem());
+	}
+
+	@Test
+	void conversaGuardaAOrigemInformada() {
+		assertEquals(OrigemConversa.SIMULADOR, new Conversa(cliente, lily, OrigemConversa.SIMULADOR).getOrigem());
+		assertEquals(OrigemConversa.WHATSAPP, new Conversa(cliente, lily, OrigemConversa.WHATSAPP).getOrigem());
+	}
+
+	@Test
+	void origemEObrigatoria() {
+		assertThrows(NullPointerException.class, () -> new Conversa(cliente, lily, null));
+	}
+
+	@Test
 	void chatbotSaudaEMensagemFicaRegistradaNaConversa() {
 		Mensagem saudacao = lily.saudar(conversa);
 

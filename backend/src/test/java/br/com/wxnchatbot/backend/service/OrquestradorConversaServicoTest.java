@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,11 +20,22 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Captor;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import br.com.wxnchatbot.backend.chatbot.BaseDeConhecimento;
+import br.com.wxnchatbot.backend.chatbot.ClassificadorPorRegras;
+import br.com.wxnchatbot.backend.chatbot.ExtratorDeProtocolo;
+import br.com.wxnchatbot.backend.chatbot.InterpretadorDeConfirmacao;
+import br.com.wxnchatbot.backend.chatbot.RoteadorDeIntencao;
+import br.com.wxnchatbot.backend.ferramenta.ConfirmacaoChamadoServico;
+import br.com.wxnchatbot.backend.ferramenta.ConsultaDemandaFerramenta;
+import br.com.wxnchatbot.backend.ferramenta.ResultadoConsultaDemanda;
+import br.com.wxnchatbot.backend.ferramenta.SolicitacaoChamadoFerramenta;
+import br.com.wxnchatbot.backend.integracao.wxn.Demanda;
+import br.com.wxnchatbot.backend.integracao.wxn.StatusDemanda;
 import br.com.wxnchatbot.backend.llm.LlmClient;
 import br.com.wxnchatbot.backend.llm.LlmIndisponivelException;
 import br.com.wxnchatbot.backend.llm.MensagemLlm;
@@ -47,6 +60,18 @@ class OrquestradorConversaServicoTest {
 	@Mock
 	private LlmClient llm;
 
+	@Mock
+	private ConsultaDemandaFerramenta consultaDemanda;
+
+	@Mock
+	private SolicitacaoChamadoFerramenta solicitacaoChamado;
+
+	@Mock
+	private ConfirmacaoChamadoServico confirmacaoChamado;
+
+	@Mock
+	private TicketServico tickets;
+
 	@Captor
 	private ArgumentCaptor<List<MensagemLlm>> historico;
 
@@ -54,7 +79,11 @@ class OrquestradorConversaServicoTest {
 
 	@BeforeEach
 	void preparar() {
-		orquestrador = new OrquestradorConversaServico(conversas, llm);
+		ExtratorDeProtocolo extrator = new ExtratorDeProtocolo();
+		RoteadorDeIntencao roteador = new RoteadorDeIntencao(new ClassificadorPorRegras(extrator), extrator,
+				new InterpretadorDeConfirmacao(), consultaDemanda, solicitacaoChamado, confirmacaoChamado, llm,
+				new BaseDeConhecimento(""), 0.7);
+		orquestrador = new OrquestradorConversaServico(conversas, roteador, tickets);
 	}
 
 	private Conversa conversaComChatbot() {
@@ -120,7 +149,7 @@ class OrquestradorConversaServicoTest {
 		assertNull(resultado.resposta());
 		assertEquals(StatusConversa.AGUARDANDO_ATENDENTE, resultado.status());
 		assertEquals(2, conversa.getMensagens().size());
-		verifyNoInteractions(llm);
+		verifyNoInteractions(llm, tickets);
 		verify(conversas).save(conversa);
 	}
 
@@ -145,7 +174,7 @@ class OrquestradorConversaServicoTest {
 		verify(conversas, never()).save(any());
 	}
 
-    @Test
+	@Test
 	void llmForaDoArRespondeMensagemPadraoEGuardaNaConversa() {
 		Conversa conversa = conversaComChatbot();
 		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
@@ -167,5 +196,38 @@ class OrquestradorConversaServicoTest {
 
 		assertThrows(IllegalStateException.class, () -> orquestrador.processarTurno(conversa.getId(), "Oi"));
 		verify(conversas, never()).save(any());
+	}
+
+	@Test
+	void pedidoDeAtendenteResponderEColocaAConversaNaFilaComTicket() {
+		Conversa conversa = conversaComChatbot();
+		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
+		when(tickets.abrir(eq(conversa.getId()), any())).thenAnswer(chamada -> conversa.solicitarAtendente(chamada.getArgument(1)));
+
+		ResultadoTurno resultado = orquestrador.processarTurno(conversa.getId(), "Quero falar com um atendente");
+
+		assertEquals(StatusConversa.AGUARDANDO_ATENDENTE, resultado.status());
+		assertTrue(resultado.resposta().contains("atendente"));
+		assertEquals(2, conversa.getMensagens().size());
+		assertEquals(resultado.resposta(), conversa.getMensagens().get(1).getConteudo());
+		verify(tickets).abrir(conversa.getId(), "O cliente pediu para falar com um atendente");
+		verifyNoInteractions(llm);
+		verify(conversas).save(conversa);
+	}
+
+	@Test
+	void consultaDeDemandaUsaAFerramentaEResponderSemChamarALlm() {
+		Conversa conversa = conversaComChatbot();
+		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
+		when(consultaDemanda.consultarStatus(EMPRESA.getId(), "WXN-2026-0001")).thenReturn(new ResultadoConsultaDemanda.Encontrada(
+				new Demanda("WXN-2026-0001", "Ajuste no relatório", StatusDemanda.EM_ANDAMENTO,
+						Instant.parse("2026-10-20T14:30:00Z"), null)));
+
+		ResultadoTurno resultado = orquestrador.processarTurno(conversa.getId(), "Qual o status da WXN-2026-0001?");
+
+		assertEquals(StatusConversa.COM_CHATBOT, resultado.status());
+		assertTrue(resultado.resposta().contains("Ajuste no relatório"));
+		assertTrue(resultado.resposta().contains("em andamento"));
+		verifyNoInteractions(llm, tickets);
 	}
 }

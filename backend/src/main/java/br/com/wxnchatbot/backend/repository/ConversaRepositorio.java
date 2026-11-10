@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import br.com.wxnchatbot.backend.model.Conversa;
+import br.com.wxnchatbot.backend.model.StatusConversa;
 import jakarta.persistence.LockModeType;
 
 public interface ConversaRepositorio extends JpaRepository<Conversa, UUID> {
@@ -22,6 +23,9 @@ public interface ConversaRepositorio extends JpaRepository<Conversa, UUID> {
 			order by t.abertoEm asc, c.id asc
 			""")
 	List<Conversa> buscarFilaAguardando();
+
+	/** A conversa mais recente do cliente que ainda não foi encerrada (a que continua quando ele escreve de novo). */
+	Optional<Conversa> findFirstByClienteIdAndStatusNotOrderByIniciadaEmDesc(UUID clienteId, StatusConversa status);
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select c from Conversa c where c.id = :id")

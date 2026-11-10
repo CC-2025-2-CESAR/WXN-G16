@@ -30,6 +30,12 @@ public class ConfirmacaoChamadoServico {
 		this.gateway = gateway;
 	}
 
+	public boolean temPedidoPendente(UUID empresaId, UUID conversaId) {
+		Objects.requireNonNull(empresaId, "empresaId é obrigatório");
+		Objects.requireNonNull(conversaId, "conversaId é obrigatório");
+		return pendentes.buscarValido(empresaId, conversaId).isPresent();
+	}
+
 	public ResultadoAbertura confirmar(UUID empresaId, UUID conversaId) {
 		Objects.requireNonNull(empresaId, "empresaId é obrigatório");
 		Objects.requireNonNull(conversaId, "conversaId é obrigatório");
