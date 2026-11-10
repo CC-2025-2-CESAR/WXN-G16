@@ -19,6 +19,7 @@ import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
 import br.com.wxnchatbot.backend.model.Empresa;
 import br.com.wxnchatbot.backend.model.Mensagem;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.Remetente;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.service.FilaConversasServico;
@@ -155,7 +156,7 @@ public class DadosDeDemonstracao implements CommandLineRunner {
 
 	private Conversa iniciar(Empresa empresa, Chatbot lily, Cenario cenario) {
 		Cliente cliente = persistir(new Cliente(empresa, cenario.nome(), cenario.telefone()));
-		Conversa conversa = persistir(new Conversa(cliente, lily));
+		Conversa conversa = persistir(new Conversa(cliente, lily, OrigemConversa.DEMONSTRACAO));
 		lily.saudar(conversa);
 		for (Fala fala : cenario.falas()) {
 			Remetente remetente = fala.doCliente() ? cliente : lily;

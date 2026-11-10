@@ -21,6 +21,7 @@ import br.com.wxnchatbot.backend.model.Atendente;
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
 import br.com.wxnchatbot.backend.model.Empresa;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.model.StatusTicket;
 import br.com.wxnchatbot.backend.model.TipoRemetente;
@@ -84,6 +85,7 @@ class DadosDeDemonstracaoIntegracaoTest {
 
 		List<Conversa> conversas = conversasDaDemonstracao();
 		assertEquals(10, conversas.size());
+		assertTrue(conversas.stream().allMatch(c -> c.getOrigem() == OrigemConversa.DEMONSTRACAO));
 		assertEquals(7, conversas.stream().filter(c -> c.getStatus() == StatusConversa.AGUARDANDO_ATENDENTE).count());
 		assertEquals(2, conversas.stream().filter(c -> c.getStatus() == StatusConversa.COM_CHATBOT).count());
 		Conversa encerrada = conversas.stream().filter(c -> c.getStatus() == StatusConversa.ENCERRADA).findFirst()

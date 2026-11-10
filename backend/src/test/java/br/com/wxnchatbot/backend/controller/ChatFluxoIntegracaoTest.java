@@ -48,6 +48,7 @@ import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
 import br.com.wxnchatbot.backend.model.Empresa;
 import br.com.wxnchatbot.backend.model.NivelUrgencia;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.model.StatusTicket;
 import br.com.wxnchatbot.backend.model.Ticket;
@@ -147,6 +148,7 @@ class ChatFluxoIntegracaoTest {
 		assertEquals(2, quantidadeDeMensagens(primeira.conversaId()));
 		assertEquals("81988880001", naConversa(primeira.conversaId(), c -> c.getCliente().getTelefone()));
 		assertEquals(EMPRESA, naConversa(primeira.conversaId(), c -> c.getEmpresa().getNome()));
+		assertEquals(OrigemConversa.SIMULADOR, naConversa(primeira.conversaId(), Conversa::getOrigem));
 
 		RespostaChat segunda = enviar("(81) 98888-0001", "Mais uma dúvida");
 
@@ -238,6 +240,7 @@ class ChatFluxoIntegracaoTest {
 				.filter(item -> item.conversaId().equals(conversaId)).toList();
 		assertEquals(1, minhas.size());
 		assertEquals("O cliente pediu para falar com um atendente", minhas.get(0).motivo());
+		assertEquals(OrigemConversa.SIMULADOR, minhas.get(0).origem());
 
 		atendenteId = transacao.execute(status -> {
 			Atendente atendente = new Atendente("Atendente do Teste", "chat.teste@wxn.example");

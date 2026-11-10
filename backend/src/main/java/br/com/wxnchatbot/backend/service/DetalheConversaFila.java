@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.model.Ticket;
 import br.com.wxnchatbot.backend.model.TipoRemetente;
 
@@ -15,6 +16,7 @@ public record DetalheConversaFila(
 		String clienteTelefone,
 		String motivo,
 		Instant abertoEm,
+		OrigemConversa origem,
 		List<MensagemResumo> mensagens) {
 
 	public record MensagemResumo(TipoRemetente tipoRemetente, String conteudo, Instant enviadaEm) {
@@ -28,6 +30,6 @@ public record DetalheConversaFila(
 				.map(m -> new MensagemResumo(m.getTipoRemetente(), m.getConteudo(), m.getEnviadaEm()))
 				.toList();
 		return new DetalheConversaFila(conversa.getId(), cliente.getNome(), cliente.getTelefone(),
-				ticket.getMotivo(), ticket.getAbertoEm(), mensagens);
+				ticket.getMotivo(), ticket.getAbertoEm(), conversa.getOrigem(), mensagens);
 	}
 }

@@ -1,0 +1,32 @@
+.selo-origem {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* Dado fictício: contorno tracejado e cinza, de propósito sem cara de "ao vivo". */
+.selo-origem--demonstracao {
+  background: #f2f0f6;
+  border-color: #b7aecb;
+  border-style: dashed;
+  color: #5b5470;
+}
+
+/* Teste feito por gente do grupo. */
+.selo-origem--simulador {
+  background: #efe9fb;
+  color: #4a33a8;
+}
+
+/* Cliente real. */
+.selo-origem--whatsapp {
+  background: #e3f6ea;
+  color: #14683a;
+}

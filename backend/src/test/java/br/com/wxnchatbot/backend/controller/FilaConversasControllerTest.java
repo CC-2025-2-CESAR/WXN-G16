@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import br.com.wxnchatbot.backend.model.TipoRemetente;
+import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.service.ConversaNaFila;
 import br.com.wxnchatbot.backend.service.DetalheConversaFila;
 import br.com.wxnchatbot.backend.service.DetalheConversaFila.MensagemResumo;
@@ -56,21 +57,24 @@ class FilaConversasControllerTest {
 	@Test
 	void filaDevolve200ComOsItensNaOrdemDoServico() throws Exception {
 		when(servico.visualizarFila()).thenReturn(List.of(
-				new ConversaNaFila(1, CONVERSA, "Maria Souza", "81999990001", "Quer falar com uma pessoa", ABERTO_EM),
+				new ConversaNaFila(1, CONVERSA, "Maria Souza", "81999990001", "Quer falar com uma pessoa", ABERTO_EM,
+						OrigemConversa.SIMULADOR),
 				new ConversaNaFila(2, OUTRA_CONVERSA, "Joao Pedro", "81999990002", "Nota fiscal",
-						ABERTO_EM.plusSeconds(60))));
+						ABERTO_EM.plusSeconds(60), OrigemConversa.DEMONSTRACAO)));
 
 		mvc.perform(get("/api/fila"))
 				.andExpect(status().isOk())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
 				.andExpect(jsonPath("$", hasSize(2)))
-				.andExpect(jsonPath("$[0].*", hasSize(6)))
+				.andExpect(jsonPath("$[0].*", hasSize(7)))
 				.andExpect(jsonPath("$[0].posicao").value(1))
 				.andExpect(jsonPath("$[0].conversaId").value(CONVERSA.toString()))
 				.andExpect(jsonPath("$[0].clienteNome").value("Maria Souza"))
 				.andExpect(jsonPath("$[0].clienteTelefone").value("81999990001"))
 				.andExpect(jsonPath("$[0].motivo").value("Quer falar com uma pessoa"))
 				.andExpect(jsonPath("$[0].abertoEm").value("2026-10-29T14:00:00Z"))
+				.andExpect(jsonPath("$[0].origem").value("SIMULADOR"))
+				.andExpect(jsonPath("$[1].origem").value("DEMONSTRACAO"))
 				.andExpect(jsonPath("$[1].posicao").value(2))
 				.andExpect(jsonPath("$[1].conversaId").value(OUTRA_CONVERSA.toString()));
 	}
@@ -87,15 +91,16 @@ class FilaConversasControllerTest {
 	@Test
 	void detalheDevolve200ComAsMensagensEmOrdem() throws Exception {
 		when(servico.abrirConversaDaFila(CONVERSA)).thenReturn(new DetalheConversaFila(CONVERSA, "Maria Souza",
-				"81999990001", "Quer falar com uma pessoa", ABERTO_EM,
+				"81999990001", "Quer falar com uma pessoa", ABERTO_EM, OrigemConversa.WHATSAPP,
 				List.of(new MensagemResumo(TipoRemetente.CHATBOT, "Oi, sou a Lily!", ABERTO_EM.minusSeconds(60)),
 						new MensagemResumo(TipoRemetente.CLIENTE, "Preciso de ajuda", ABERTO_EM.minusSeconds(30)))));
 
 		mvc.perform(get("/api/fila/{id}", CONVERSA))
 				.andExpect(status().isOk())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-				.andExpect(jsonPath("$.*", hasSize(6)))
+				.andExpect(jsonPath("$.*", hasSize(7)))
 				.andExpect(jsonPath("$.conversaId").value(CONVERSA.toString()))
+				.andExpect(jsonPath("$.origem").value("WHATSAPP"))
 				.andExpect(jsonPath("$.clienteNome").value("Maria Souza"))
 				.andExpect(jsonPath("$.clienteTelefone").value("81999990001"))
 				.andExpect(jsonPath("$.motivo").value("Quer falar com uma pessoa"))
