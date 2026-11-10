@@ -5,6 +5,7 @@ import { useBackendHealth } from "../hooks/useBackendHealth";
 import { useFila } from "../hooks/useFila";
 import {
   API_URL,
+  DEMO_ATIVO,
   ErroApi,
   assumirConversa,
   encerrarConversa,
@@ -149,6 +150,7 @@ export default function App() {
           count={aguardando}
           atendente={atendente}
           backend={backend}
+          demo={DEMO_ATIVO}
           onHome={goHome}
           onSettings={openSettings}
         />
@@ -189,6 +191,17 @@ export default function App() {
               </button>
             </div>
           </header>
+          {DEMO_ATIVO ? (
+            <div className="demo-banner" role="status">
+              <span><strong>Modo demonstração</strong> · Conversas fictícias para testar a tela.</span>
+              <a href={window.location.pathname}>Voltar para a fila real</a>
+            </div>
+          ) : import.meta.env.DEV && fila.erro ? (
+            <div className="demo-banner">
+              <span>Servidor indisponível? Você pode explorar a tela com dados fictícios.</span>
+              <a href="?demo=1">Abrir demonstração</a>
+            </div>
+          ) : null}
           <Metrics
             fila={fila.itens}
             minhas={atendimento.length}
@@ -296,10 +309,12 @@ export default function App() {
           <p>A escolha fica salva neste navegador.</p>
           <div className="setting-row">
             <span>
-              Servidor
-              <small>{API_URL}</small>
+              {DEMO_ATIVO ? "Fonte dos dados" : "Servidor"}
+              <small>{DEMO_ATIVO ? "Exemplos locais" : API_URL}</small>
             </span>
-            <StatusBadge status={backend} />
+            {DEMO_ATIVO ? (
+              <span className="status-badge status-badge--demo">Demonstração</span>
+            ) : <StatusBadge status={backend} />}
           </div>
           <div className="setting-row">
             <span>
