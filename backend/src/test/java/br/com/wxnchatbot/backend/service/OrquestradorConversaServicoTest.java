@@ -175,16 +175,19 @@ class OrquestradorConversaServicoTest {
 	}
 
 	@Test
-	void llmForaDoArRespondeMensagemPadraoEGuardaNaConversa() {
+	void llmForaDoArRespondeMensagemPadraoEAbreTicketParaUmHumano() {
 		Conversa conversa = conversaComChatbot();
 		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
 		when(llm.responder(any(), any())).thenThrow(new LlmIndisponivelException("fora do ar", null));
+		when(tickets.abrir(eq(conversa.getId()), any()))
+				.thenAnswer(chamada -> conversa.solicitarAtendente(chamada.getArgument(1)));
 
 		ResultadoTurno resultado = orquestrador.processarTurno(conversa.getId(), "Oi");
 
-		assertNotNull(resultado.resposta());
-		assertEquals(StatusConversa.COM_CHATBOT, resultado.status());
+		assertTrue(resultado.resposta().contains("atendente"));
+		assertEquals(StatusConversa.AGUARDANDO_ATENDENTE, resultado.status());
 		assertEquals(2, conversa.getMensagens().size());
+		verify(tickets).abrir(eq(conversa.getId()), any());
 		verify(conversas).save(conversa);
 	}
 
@@ -229,5 +232,33 @@ class OrquestradorConversaServicoTest {
 		assertTrue(resultado.resposta().contains("Ajuste no relatório"));
 		assertTrue(resultado.resposta().contains("em andamento"));
 		verifyNoInteractions(llm, tickets);
+	}
+
+	@Test
+	void consultaComFerramentaForaDoArRespondeMensagemPadraoEGuardaNaConversa() {
+		Conversa conversa = conversaComChatbot();
+		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
+		when(consultaDemanda.consultarStatus(EMPRESA.getId(), "WXN-2026-0001"))
+				.thenReturn(new ResultadoConsultaDemanda.Indisponivel());
+
+		ResultadoTurno resultado = orquestrador.processarTurno(conversa.getId(), "Qual o status da WXN-2026-0001?");
+
+		assertEquals(StatusConversa.COM_CHATBOT, resultado.status());
+		assertTrue(resultado.resposta().contains("Não consegui consultar a demanda"));
+		assertEquals(2, conversa.getMensagens().size());
+		assertEquals(resultado.resposta(), conversa.getMensagens().get(1).getConteudo());
+		verifyNoInteractions(llm, tickets);
+		verify(conversas).save(conversa);
+	}
+
+	@Test
+	void falhaAoAbrirTicketFalhaOTurnoENaoGrava() {
+		Conversa conversa = conversaComChatbot();
+		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
+		when(tickets.abrir(eq(conversa.getId()), any())).thenThrow(new IllegalStateException("banco fora"));
+
+		assertThrows(IllegalStateException.class,
+				() -> orquestrador.processarTurno(conversa.getId(), "Quero falar com um atendente"));
+		verify(conversas, never()).save(any());
 	}
 }

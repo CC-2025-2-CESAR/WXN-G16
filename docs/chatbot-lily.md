@@ -85,6 +85,11 @@ demonstração longa.
 Dá para trocar por outro classificador (por exemplo um modelo próprio para decisões, como o Jev) implementando
 `ClassificadorDeIntencao` e marcando o bean como `@Primary`. O roteador não muda.
 
+## Filtro de saída e plano B
+
+- A resposta livre da LLM (caso `DUVIDA`) passa pelo `FiltroDeSaida` antes de ir para o cliente. Ela é barrada se repetir uma linha do prompt de sistema ou se prometer uma ação que a Lily não faz sozinha (por exemplo, "abri o chamado" ou "vou abrir um chamado"). As demais respostas vêm de texto pronto do código e não passam pelo filtro.
+- Se a resposta for barrada, ou se a LLM falhar ou demorar (`LlmIndisponivelException`), a Lily responde uma mensagem padrão e a conversa vai para a fila de atendimento com um ticket aberto.
+
 ## Configuração (variáveis de ambiente)
 
 | Variável | Padrão | Para que serve |
