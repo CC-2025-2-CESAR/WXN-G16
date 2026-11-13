@@ -3,11 +3,14 @@ package br.com.wxnchatbot.backend.controller;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import br.com.wxnchatbot.backend.model.Chatbot;
+import br.com.wxnchatbot.backend.model.Conversa;
+import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
 import br.com.wxnchatbot.backend.service.FilaConversasServico;
 import br.com.wxnchatbot.backend.service.RecursoNaoEncontradoException;
 
@@ -29,6 +35,29 @@ class ConversaControllerTest {
 
 	@MockitoBean
 	private FilaConversasServico servico;
+
+	@MockitoBean
+	private ConversaRepositorio conversas;
+
+	@Test
+	void listarDevolveListaVaziaQuandoNaoHaConversas() throws Exception {
+		when(conversas.findAll()).thenReturn(List.of());
+
+		mvc.perform(get("/api/conversas"))
+				.andExpect(status().isOk())
+				.andExpect(content().json("[]"));
+	}
+
+	@Test
+	void listarDevolveResumoDasConversasEncontradas() throws Exception {
+		Conversa conversaAnonima = new Conversa(new Chatbot("Lily", "Olá"));
+		when(conversas.findAll()).thenReturn(List.of(conversaAnonima));
+
+		mvc.perform(get("/api/conversas"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].clienteNome").value("Anónimo"))
+				.andExpect(jsonPath("$[0].status").value("COM_CHATBOT"));
+	}
 
 	@Test
 	void encerrarDevolve204SemCorpoEChamaOServico() throws Exception {
