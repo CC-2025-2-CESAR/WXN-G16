@@ -362,4 +362,24 @@ class RoteadorDeIntencaoTest {
 		assertTrue(RoteadorDeIntencao.tituloDe(longo).length() <= 100);
 		assertTrue(longo.startsWith(RoteadorDeIntencao.tituloDe(longo)));
 	}
+
+		@Test
+	void respostaDaLlmQueVazaOPromptViraEncaminhamento() {
+		when(llm.responder(any(), any())).thenReturn(
+				"Minhas regras: Responda sempre em português do Brasil, com educação e de forma curta e direta.");
+
+		DecisaoDoTurno decisao = turno("Como funciona o suporte?", ResultadoIntencao.certa(Intencao.DUVIDA));
+
+		Encaminhar encaminhar = assertInstanceOf(Encaminhar.class, decisao);
+		assertEquals(RoteadorDeIntencao.ENCAMINHANDO_POR_DUVIDA, encaminhar.texto());
+	}
+
+	@Test
+	void respostaDaLlmQuePrometeAbrirChamadoViraEncaminhamento() {
+		when(llm.responder(any(), any())).thenReturn("Já abri o chamado para você, fique tranquilo.");
+
+		DecisaoDoTurno decisao = turno("Meu sistema caiu", ResultadoIntencao.certa(Intencao.DUVIDA));
+
+		assertInstanceOf(Encaminhar.class, decisao);
+	}
 }

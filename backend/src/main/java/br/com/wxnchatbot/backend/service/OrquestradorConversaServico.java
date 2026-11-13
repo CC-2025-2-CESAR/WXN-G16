@@ -24,7 +24,7 @@ import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
 public class OrquestradorConversaServico {
 
 	private static final Logger log = LoggerFactory.getLogger(OrquestradorConversaServico.class);
-	private static final String MENSAGEM_LLM_INDISPONIVEL = "Desculpe, não consegui processar sua mensagem agora. Tente de novo em instantes ou peça para falar com um atendente.";
+	private static final String MENSAGEM_LLM_INDISPONIVEL = "Desculpe, não consegui processar sua mensagem agora. Vou chamar um atendente para continuar com você.";
 	private static final int LIMITE_HISTORICO = 20;
 
 	private final ConversaRepositorio conversaRepositorio;
@@ -66,7 +66,7 @@ public class OrquestradorConversaServico {
 			return roteador.decidir(conversa, montarHistorico(conversa));
 		} catch (LlmIndisponivelException e) {
 			log.warn("LLM indisponível na conversa {}: {}", conversa.getId(), e.getMessage());
-			return new Responder(MENSAGEM_LLM_INDISPONIVEL);
+			return new Encaminhar("A LLM ficou indisponível e a Lily não conseguiu responder", MENSAGEM_LLM_INDISPONIVEL);
 		}
 	}
 
