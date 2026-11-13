@@ -51,7 +51,8 @@ class ConversaControllerTest {
 
 	@Test
 	void listarDevolveResumoDasConversasEncontradas() throws Exception {
-		Conversa conversaAnonima = new Conversa(new Chatbot("Lily", "Olá"));
+		// Passando null como cliente para simular usuário anônimo
+		Conversa conversaAnonima = new Conversa(null, new Chatbot("Lily", "Olá"));
 		when(conversas.findAll()).thenReturn(List.of(conversaAnonima));
 
 		mvc.perform(get("/api/conversas"))
@@ -62,7 +63,8 @@ class ConversaControllerTest {
 
 	@Test
 	void detalharDevolveConversaComMensagens() throws Exception {
-		Conversa conversaAnonima = new Conversa(new Chatbot("Lily", "Olá"));
+		// Passando null como cliente para simular usuário anônimo
+		Conversa conversaAnonima = new Conversa(null, new Chatbot("Lily", "Olá"));
 		when(conversas.findById(CONVERSA)).thenReturn(Optional.of(conversaAnonima));
 
 		mvc.perform(get("/api/conversas/{id}", CONVERSA))
