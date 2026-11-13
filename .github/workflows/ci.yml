@@ -1,7 +1,8 @@
 name: CI
 
 # Serve pra validar Pull Request para as branchs develop e main.
-# Testes do backend com Postgres, lint, typecheck e build do frontend.
+# Testes do backend com Postgres, lint, typecheck e build do frontend, e
+# varredura de segredos (gitleaks) nos commits do PR.
 # Os Workflows de deploy só rodam depois do merge na main e pulam os testes,
 # então esté é o único lugar onde são executados
 on:
@@ -81,3 +82,37 @@ jobs:
 
       - name: Tipos e build
         run: npm run build
+
+  segredos:
+    name: Segredos (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Histórico completo: o gitleaks precisa dos commits do PR, não só do último
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Baixa o binário e confere o SHA-256 publicado na release. Não usa a action
+      # oficial porque ela exige licença paga em repositório de organização
+      - name: Instala o gitleaks
+        env:
+          VERSAO: "8.30.1"
+          SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${VERSAO}/gitleaks_${VERSAO}_linux_x64.tar.gz"
+          echo "${SHA256}  gitleaks.tar.gz" | sha256sum --check
+          tar -xzf gitleaks.tar.gz gitleaks
+
+      # Em PR olha só os commits do PR; no disparo manual olha o histórico inteiro.
+      # --redact esconde o valor achado, porque o log do Actions é público
+      - name: Procura segredos
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          TOPO: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            ./gitleaks git --redact -v --log-opts="${BASE}..${TOPO}"
+          else
+            ./gitleaks git --redact -v --log-opts="--all"
+          fi
