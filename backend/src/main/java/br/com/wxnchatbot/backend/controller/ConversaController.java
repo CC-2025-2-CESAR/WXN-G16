@@ -33,6 +33,13 @@ public class ConversaController {
 				.toList();
 	}
 
+	@GetMapping("/{id}")
+	public ConversaDetalhe detalhar(@PathVariable UUID id) {
+		return conversas.findById(id)
+				.map(ConversaDetalhe::new)
+				.orElseThrow(() -> new br.com.wxnchatbot.backend.service.RecursoNaoEncontradoException("Conversa", id));
+	}
+
 	@PostMapping("/{conversaId}/encerrar")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void encerrar(@PathVariable UUID conversaId) {
