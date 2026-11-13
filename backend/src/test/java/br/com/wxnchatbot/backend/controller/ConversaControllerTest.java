@@ -1,6 +1,7 @@
 package br.com.wxnchatbot.backend.controller;
 
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -20,9 +21,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import br.com.wxnchatbot.backend.model.Chatbot;
 import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
+import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
 import br.com.wxnchatbot.backend.service.FilaConversasServico;
 import br.com.wxnchatbot.backend.service.RecursoNaoEncontradoException;
@@ -52,8 +53,16 @@ class ConversaControllerTest {
 
 	@Test
 	void listarDevolveResumoDasConversasEncontradas() throws Exception {
-		Cliente clienteMock = new Cliente("João Silva", "joao@email.com", "11999999999");
-		Conversa conversaMock = new Conversa(clienteMock, new Chatbot("Lily", "Olá"));
+		// 1. Criamos um mock do Cliente
+		Cliente clienteMock = mock(Cliente.class);
+		when(clienteMock.getNome()).thenReturn("João Silva");
+
+		// 2. Criamos um mock da Conversa e ligamos o Cliente
+		Conversa conversaMock = mock(Conversa.class);
+		when(conversaMock.getId()).thenReturn(CONVERSA);
+		when(conversaMock.getCliente()).thenReturn(clienteMock);
+		when(conversaMock.getStatus()).thenReturn(StatusConversa.COM_CHATBOT);
+
 		when(conversas.findAll()).thenReturn(List.of(conversaMock));
 
 		mvc.perform(get("/api/conversas"))
@@ -64,8 +73,17 @@ class ConversaControllerTest {
 
 	@Test
 	void detalharDevolveConversaComMensagens() throws Exception {
-		Cliente clienteMock = new Cliente("João Silva", "joao@email.com", "11999999999");
-		Conversa conversaMock = new Conversa(clienteMock, new Chatbot("Lily", "Olá"));
+		// 1. Criamos um mock do Cliente
+		Cliente clienteMock = mock(Cliente.class);
+		when(clienteMock.getNome()).thenReturn("João Silva");
+
+		// 2. Criamos um mock da Conversa 
+		Conversa conversaMock = mock(Conversa.class);
+		when(conversaMock.getId()).thenReturn(CONVERSA);
+		when(conversaMock.getCliente()).thenReturn(clienteMock);
+		when(conversaMock.getStatus()).thenReturn(StatusConversa.COM_CHATBOT);
+		when(conversaMock.getMensagens()).thenReturn(List.of()); // Histórico vazio para simplificar o teste
+
 		when(conversas.findById(CONVERSA)).thenReturn(Optional.of(conversaMock));
 
 		mvc.perform(get("/api/conversas/{id}", CONVERSA))
