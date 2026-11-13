@@ -21,6 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import br.com.wxnchatbot.backend.model.Chatbot;
+import br.com.wxnchatbot.backend.model.Cliente;
 import br.com.wxnchatbot.backend.model.Conversa;
 import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
 import br.com.wxnchatbot.backend.service.FilaConversasServico;
@@ -51,25 +52,25 @@ class ConversaControllerTest {
 
 	@Test
 	void listarDevolveResumoDasConversasEncontradas() throws Exception {
-		// Passando null como cliente para simular usuário anônimo
-		Conversa conversaAnonima = new Conversa(null, new Chatbot("Lily", "Olá"));
-		when(conversas.findAll()).thenReturn(List.of(conversaAnonima));
+		Cliente clienteMock = new Cliente("João Silva", "joao@email.com", "11999999999");
+		Conversa conversaMock = new Conversa(clienteMock, new Chatbot("Lily", "Olá"));
+		when(conversas.findAll()).thenReturn(List.of(conversaMock));
 
 		mvc.perform(get("/api/conversas"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].clienteNome").value("Anônimo"))
+				.andExpect(jsonPath("$[0].clienteNome").value("João Silva"))
 				.andExpect(jsonPath("$[0].status").value("COM_CHATBOT"));
 	}
 
 	@Test
 	void detalharDevolveConversaComMensagens() throws Exception {
-		// Passando null como cliente para simular usuário anônimo
-		Conversa conversaAnonima = new Conversa(null, new Chatbot("Lily", "Olá"));
-		when(conversas.findById(CONVERSA)).thenReturn(Optional.of(conversaAnonima));
+		Cliente clienteMock = new Cliente("João Silva", "joao@email.com", "11999999999");
+		Conversa conversaMock = new Conversa(clienteMock, new Chatbot("Lily", "Olá"));
+		when(conversas.findById(CONVERSA)).thenReturn(Optional.of(conversaMock));
 
 		mvc.perform(get("/api/conversas/{id}", CONVERSA))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.clienteNome").value("Anônimo"))
+				.andExpect(jsonPath("$.clienteNome").value("João Silva"))
 				.andExpect(jsonPath("$.status").value("COM_CHATBOT"))
 				.andExpect(jsonPath("$.mensagens").isArray());
 	}
