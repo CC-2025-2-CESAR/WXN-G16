@@ -16,7 +16,7 @@ public record ConversaDetalhe(
     public ConversaDetalhe(Conversa conversa) {
         this(
                 conversa.getId(),
-                conversa.getCliente().isPresent() ? conversa.getCliente().get().getNome() : "Anónimo",
+                conversa.getCliente() != null ? conversa.getCliente().getNome() : "Anônimo",
                 conversa.getStatus(),
                 conversa.getMensagens().stream().map(MensagemDetalhe::new).toList()
         );
@@ -27,7 +27,7 @@ public record ConversaDetalhe(
             String texto
     ) {
         public MensagemDetalhe(br.com.wxnchatbot.backend.model.Mensagem mensagem) {
-            this(mensagem.getTipoRemetente(), mensagem.getTexto());
+            this(mensagem.getTipoRemetente(), mensagem.getConteudo());
         }
     }
 }

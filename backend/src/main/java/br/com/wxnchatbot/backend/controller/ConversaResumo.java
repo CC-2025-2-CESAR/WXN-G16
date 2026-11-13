@@ -13,7 +13,7 @@ public record ConversaResumo(
     public ConversaResumo(Conversa conversa) {
         this(
                 conversa.getId(),
-                conversa.getCliente().isPresent() ? conversa.getCliente().get().getNome() : "Anónimo",
+                conversa.getCliente() != null ? conversa.getCliente().getNome() : "Anônimo",
                 conversa.getStatus()
         );
     }
