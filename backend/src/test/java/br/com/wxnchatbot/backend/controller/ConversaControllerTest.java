@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -55,8 +56,29 @@ class ConversaControllerTest {
 
 		mvc.perform(get("/api/conversas"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].clienteNome").value("Anónimo"))
+				.andExpect(jsonPath("$[0].clienteNome").value("Anônimo"))
 				.andExpect(jsonPath("$[0].status").value("COM_CHATBOT"));
+	}
+
+	@Test
+	void detalharDevolveConversaComMensagens() throws Exception {
+		Conversa conversaAnonima = new Conversa(new Chatbot("Lily", "Olá"));
+		when(conversas.findById(CONVERSA)).thenReturn(Optional.of(conversaAnonima));
+
+		mvc.perform(get("/api/conversas/{id}", CONVERSA))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.clienteNome").value("Anônimo"))
+				.andExpect(jsonPath("$.status").value("COM_CHATBOT"))
+				.andExpect(jsonPath("$.mensagens").isArray());
+	}
+
+	@Test
+	void detalharConversaInexistenteDevolve404() throws Exception {
+		when(conversas.findById(CONVERSA)).thenReturn(Optional.empty());
+
+		mvc.perform(get("/api/conversas/{id}", CONVERSA))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.status").value(404));
 	}
 
 	@Test
@@ -94,24 +116,3 @@ class ConversaControllerTest {
 		verifyNoInteractions(servico);
 	}
 }
-
-@Test
-	void detalharDevolveConversaComMensagens() throws Exception {
-		Conversa conversaAnonima = new Conversa(new Chatbot("Lily", "Olá"));
-		when(conversas.findById(CONVERSA)).thenReturn(java.util.Optional.of(conversaAnonima));
-
-		mvc.perform(get("/api/conversas/{id}", CONVERSA))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.clienteNome").value("Anónimo"))
-				.andExpect(jsonPath("$.status").value("COM_CHATBOT"))
-				.andExpect(jsonPath("$.mensagens").isArray());
-	}
-
-	@Test
-	void detalharConversaInexistenteDevolve404() throws Exception {
-		when(conversas.findById(CONVERSA)).thenReturn(java.util.Optional.empty());
-
-		mvc.perform(get("/api/conversas/{id}", CONVERSA))
-				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.status").value(404)); // Valida a estrutura de erro que o GlobalExceptionHandler do projeto gera
-	}
