@@ -94,3 +94,24 @@ class ConversaControllerTest {
 		verifyNoInteractions(servico);
 	}
 }
+
+@Test
+	void detalharDevolveConversaComMensagens() throws Exception {
+		Conversa conversaAnonima = new Conversa(new Chatbot("Lily", "Olá"));
+		when(conversas.findById(CONVERSA)).thenReturn(java.util.Optional.of(conversaAnonima));
+
+		mvc.perform(get("/api/conversas/{id}", CONVERSA))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.clienteNome").value("Anónimo"))
+				.andExpect(jsonPath("$.status").value("COM_CHATBOT"))
+				.andExpect(jsonPath("$.mensagens").isArray());
+	}
+
+	@Test
+	void detalharConversaInexistenteDevolve404() throws Exception {
+		when(conversas.findById(CONVERSA)).thenReturn(java.util.Optional.empty());
+
+		mvc.perform(get("/api/conversas/{id}", CONVERSA))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.status").value(404)); // Valida a estrutura de erro que o GlobalExceptionHandler do projeto gera
+	}
