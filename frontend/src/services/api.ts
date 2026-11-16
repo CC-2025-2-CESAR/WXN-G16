@@ -1,7 +1,15 @@
 import type { Atendente, ConversaNaFila, DetalheConversaFila } from '../types/fila';
 import type { HealthResponse } from '../types/health';
+import {
+  abrirDemoConversa,
+  assumirDemoConversa,
+  encerrarDemoConversa,
+  listarDemoAtendentes,
+  listarDemoFila,
+} from './demo';
 
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
+export const DEMO_ATIVO = import.meta.env.DEV && new URLSearchParams(window.location.search).get('demo') === '1';
 
 export class ErroApi extends Error {
   status: number;
@@ -43,21 +51,42 @@ async function requisitar(caminho: string, init?: RequestInit) {
 }
 
 export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
+  if (DEMO_ATIVO) {
+    signal?.throwIfAborted();
+    return { status: 'UP' };
+  }
   const resposta = await requisitar('/api/health', { signal });
   return resposta.json();
 }
 
 export async function listarFila(signal?: AbortSignal): Promise<ConversaNaFila[]> {
+  if (DEMO_ATIVO) {
+    signal?.throwIfAborted();
+    return listarDemoFila();
+  }
   const resposta = await requisitar('/api/fila', { signal });
   return resposta.json();
 }
 
 export async function abrirConversa(conversaId: string, signal?: AbortSignal): Promise<DetalheConversaFila> {
+  if (DEMO_ATIVO) {
+    signal?.throwIfAborted();
+    const conversa = abrirDemoConversa(conversaId);
+    if (!conversa) throw new ErroApi('Esta conversa não está mais na fila.', 404);
+    return conversa;
+  }
   const resposta = await requisitar(`/api/fila/${conversaId}`, { signal });
   return resposta.json();
 }
 
 export async function assumirConversa(conversaId: string, atendenteId: string) {
+  if (DEMO_ATIVO) {
+    const resultado = assumirDemoConversa(conversaId, atendenteId);
+    if (resultado === 'conversa-ausente') throw new ErroApi('Esta conversa não está mais na fila.', 409);
+    if (resultado === 'atendente-ausente') throw new ErroApi('Atendente não encontrado.', 404);
+    if (resultado === 'atendente-indisponivel') throw new ErroApi('Atendente indisponível.', 409);
+    return;
+  }
   await requisitar(`/api/fila/${conversaId}/assumir`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -66,10 +95,18 @@ export async function assumirConversa(conversaId: string, atendenteId: string) {
 }
 
 export async function encerrarConversa(conversaId: string) {
+  if (DEMO_ATIVO) {
+    if (!encerrarDemoConversa(conversaId)) throw new ErroApi('Conversa não encontrada em atendimento.', 404);
+    return;
+  }
   await requisitar(`/api/conversas/${conversaId}/encerrar`, { method: 'POST' });
 }
 
 export async function listarAtendentes(signal?: AbortSignal): Promise<Atendente[]> {
+  if (DEMO_ATIVO) {
+    signal?.throwIfAborted();
+    return listarDemoAtendentes();
+  }
   const resposta = await requisitar('/api/atendentes', { signal });
   return resposta.json();
 }

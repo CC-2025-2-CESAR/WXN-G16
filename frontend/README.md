@@ -14,6 +14,15 @@ npm run lint     # oxlint
 
 Variáveis de ambiente: veja [`.env.example`](.env.example).
 
+### Prévia local com conversas fictícias
+
+Com o Vite em execução, abra `http://localhost:5173/?demo=1` para testar a
+fila, o histórico e as ações de assumir e encerrar sem iniciar o backend. Esse
+modo funciona apenas no servidor de desenvolvimento e mostra um aviso de
+demonstração na tela. As alterações feitas nos exemplos ficam só na memória da
+página e são reiniciadas ao recarregar. Sem `?demo=1`, a tela continua usando a
+API real configurada em `VITE_API_URL`.
+
 ## Tela de atendimento
 
 A tela mostra a fila de conversas que aguardam um atendente humano. Todos os
