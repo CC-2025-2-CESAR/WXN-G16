@@ -1,7 +1,7 @@
 export type TipoRemetente = 'CLIENTE' | 'CHATBOT' | 'ATENDENTE';
 
-/** De onde a conversa veio: dado fictício, teste feito pelo grupo no simulador ou cliente real pelo WhatsApp. */
-export type OrigemConversa = 'DEMONSTRACAO' | 'SIMULADOR' | 'WHATSAPP';
+/** De onde a conversa veio: dado fictício, teste feito pelo grupo no simulador ou cliente real (WhatsApp ou Telegram). */
+export type OrigemConversa = 'DEMONSTRACAO' | 'SIMULADOR' | 'WHATSAPP' | 'TELEGRAM';
 
 export interface ConversaNaFila {
   posicao: number;

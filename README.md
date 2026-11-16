@@ -11,13 +11,14 @@ IA) para a **WXN Tecnologia** — Projeto 3, Computação, CESAR School.
 > de chat (`POST /api/chat/mensagens`), o roteador que decide o que fazer com
 > cada mensagem (consultar uma demanda, abrir um chamado com confirmação,
 > responder uma dúvida, passar para um atendente), a integração com a Gemini e o
-> canal do WhatsApp pelo webhook da Meta (desligado por padrão). O frontend tem
-> o dashboard de atendimento (fila, assumir e encerrar, com um selo que diz se a
-> conversa é de demonstração, de teste ou de um cliente real) e o **simulador de
-> WhatsApp** para conversar com a Lily. O que ainda **não existe** é a
-> autenticação, a resposta do atendente chegando ao cliente e o WhatsApp de
-> verdade: o número de teste da Meta não entrega para celular do Brasil
-> ([`docs/whatsapp.md`](docs/whatsapp.md)). Veja [Próximos passos](#próximos-passos).
+> canais do **Telegram** (o que dá para usar de verdade hoje) e do WhatsApp (os
+> dois desligados por padrão). O frontend tem o dashboard de atendimento (fila,
+> assumir e encerrar, com um selo que diz se a conversa é de demonstração, de
+> teste ou de um cliente real) e o **simulador de WhatsApp** para conversar com
+> a Lily. O que ainda **não existe** é a autenticação, a resposta do atendente
+> chegando ao cliente e o WhatsApp de verdade: o número de teste da Meta não
+> entrega para celular do Brasil ([`docs/whatsapp.md`](docs/whatsapp.md)). Veja
+> [Próximos passos](#próximos-passos).
 
 ## Sobre o projeto
 
@@ -244,6 +245,9 @@ ela aparece na fila do dashboard.
 - **Pelo navegador**, o simulador de WhatsApp (`http://localhost:5173/#/simulador`,
   com o frontend rodando) faz o mesmo numa tela de conversa:
   [`docs/simulador-chat.md`](docs/simulador-chat.md).
+- **Telegram:** um bot do Telegram conversa com a Lily (grátis, sem empresa
+  verificada, funciona no Brasil). Vem desligado; criar o bot, testar na máquina e
+  ligar no Azure estão em [`docs/telegram.md`](docs/telegram.md).
 - **WhatsApp de verdade:** o webhook da Meta vem desligado. A configuração, os
   limites e o que não funciona (o número de teste da Meta não entrega para o
   Brasil) estão em [`docs/whatsapp.md`](docs/whatsapp.md).
@@ -274,7 +278,7 @@ npm run dev
 Abra `http://localhost:5173`. O dashboard mostra a fila de conversas que
 aguardam um atendente e deixa abrir, assumir e encerrar cada uma, com o
 backend (passo anterior) rodando; com o perfil `demo` há conversas de
-exemplo, cada uma com um selo (Demonstração, Simulador ou WhatsApp) que diz de
+exemplo, cada uma com um selo (Demonstração, Simulador, WhatsApp ou Telegram) que diz de
 onde veio. A lateral indica "Backend conectado" ou "Backend indisponível". Para
 conversar com a Lily, abra `http://localhost:5173/#/simulador`.
 
@@ -296,6 +300,7 @@ Veja `.env.example` (raiz) e `frontend/.env.example`. Resumo:
 | `CHAT_API_HABILITADA` | Backend | `true` em `dev`, `false` em `prod` (a API de chat não tem autenticação) |
 | `CHAT_EMPRESA_PADRAO`, `CHAT_EMPRESA_PADRAO_ID` | Backend | empresa de demonstração e o id que o mock da WXN conhece em `dev`; vazios em `prod` |
 | `WHATSAPP_HABILITADO` e as outras `WHATSAPP_*` | Backend | desligado; veja [`docs/whatsapp.md`](docs/whatsapp.md) |
+| `TELEGRAM_HABILITADO`, `TELEGRAM_MODO`, `TELEGRAM_TOKEN_DO_BOT`, `TELEGRAM_SEGREDO_DO_WEBHOOK` | Backend | desligado; `webhook` ou `polling`; o token é segredo. Veja [`docs/telegram.md`](docs/telegram.md) |
 | `VITE_API_URL` | Frontend (`frontend/.env`, se você criar um) | `http://localhost:8080` |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Reservado para etapas futuras | vazio — **não preencher com chave real neste repositório** |
 
@@ -311,6 +316,7 @@ WXN-G16/
 ├── .github/workflows/       CI dos PRs (ci.yml), guarda de origem para a main e deploys (só na main)
 ├── backend/                 Spring Boot (Java 21, Maven)
 │   ├── src/main/java/br/com/wxnchatbot/backend/
+│   │   ├── canal/telegram/  Webhook (ou polling) e envio pela Bot API do Telegram
 │   │   ├── canal/whatsapp/  Webhook e envio pela Cloud API da Meta
 │   │   ├── chatbot/         Intenção, roteador, confirmação do chamado e quem escreve as respostas
 │   │   ├── config/          CorsConfig
@@ -350,6 +356,7 @@ WXN-G16/
 │   ├── spike-llm.md           Limites, tool calling e latência da Gemini (plano grátis)
 │   ├── chatbot-lily.md        Como a Lily decide (intenção, triagem, encaminhamento) e como ligar a LLM
 │   ├── whatsapp.md            Webhook e envio pela Cloud API da Meta: variáveis, configuração e limites
+│   ├── telegram.md            Bot do Telegram: criar, testar na máquina (polling) e ligar no Azure (webhook)
 │   ├── ui-fila-atendimento.md  Tela da fila: como subir com dados de demonstração
 │   ├── simulador-chat.md      Simulador de WhatsApp: conversar com a Lily sem a Meta
 │   └── status-e-roadmap.md    Diagnóstico do projeto, riscos, escopo do
@@ -458,6 +465,7 @@ nesta ordem aproximada:
    histórico de conversas.
 6. **Autenticação** mínima nas rotas do painel e na API de chat.
 7. **WhatsApp real** — depende de uma conta da Meta com número brasileiro e
-   empresa verificada (a da WXN, num produto de verdade); fora da PoC.
+   empresa verificada (a da WXN, num produto de verdade); fora da PoC. Enquanto
+   isso, o canal real que funciona é o Telegram.
 8. **Depois da PoC** — RAG (base de conhecimento), MCP e e-mail de confirmação
    com SMTP real.
