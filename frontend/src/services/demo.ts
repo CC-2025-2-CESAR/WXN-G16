@@ -102,6 +102,7 @@ export function listarDemoFila(): ConversaNaFila[] {
     clienteTelefone: cenario.telefone,
     motivo: cenario.motivo,
     abertoEm: abertoEm(cenario),
+    origem: 'DEMONSTRACAO',
   }));
 }
 
@@ -124,6 +125,7 @@ export function abrirDemoConversa(id: string): DetalheConversaFila | null {
     clienteTelefone: cenario.telefone,
     motivo: cenario.motivo,
     abertoEm: abertoEm(cenario),
+    origem: 'DEMONSTRACAO',
     mensagens,
   };
 }
