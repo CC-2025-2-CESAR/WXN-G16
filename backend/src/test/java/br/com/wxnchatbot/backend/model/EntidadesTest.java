@@ -11,6 +11,24 @@ class EntidadesTest {
 	private static final Empresa EMPRESA = new Empresa("Empresa Demo");
 
 	@Test
+	void clienteDoTelegramGuardaOIdentificadorNoLugarDoTelefone() {
+		Cliente cliente = new Cliente(EMPRESA, "Maria Souza", "tg:7700000001");
+
+		assertEquals("tg:7700000001", cliente.getTelefone());
+	}
+
+	@Test
+	void identificadorDoTelegramMalFormadoNaoPassaPorTelefone() {
+		for (String invalido : new String[] { "tg:", "tg:abc", "TG:123", "tg:12 34", "tg:1234567890123456789012" }) {
+			org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+					() -> new Cliente(EMPRESA, "Maria", invalido), invalido);
+		}
+		assertEquals(true, Cliente.ehIdentificadorDoTelegram("tg:123"));
+		assertEquals(false, Cliente.ehIdentificadorDoTelegram("81999990101"));
+		assertEquals(false, Cliente.ehIdentificadorDoTelegram(null));
+	}
+
+	@Test
 	void clienteNormalizaTelefoneParaApenasDigitos() {
 		Cliente cliente = new Cliente(EMPRESA, "  Maria Souza  ", "+55 (81) 99999-1234");
 
