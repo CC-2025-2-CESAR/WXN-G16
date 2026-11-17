@@ -37,6 +37,19 @@ class TelefoneBrTest {
 	}
 
 	@Test
+	void identificadorDoTelegramPassaSemMudar() {
+		assertEquals("tg:7700000001", TelefoneBr.nacional("tg:7700000001"));
+		assertEquals("tg:7700000001", TelefoneBr.nacional("  tg:7700000001 "));
+		assertEquals(List.of("tg:7700000001"), TelefoneBr.variantes("tg:7700000001"));
+	}
+
+	@Test
+	void textoParecidoComIdentificadorDoTelegramMasInvalidoContinuaSendoTelefone() {
+		assertEquals("123", TelefoneBr.nacional("tg:abc123"));
+		assertEquals("", TelefoneBr.nacional("tg:"));
+	}
+
+	@Test
 	void nuloViraVazio() {
 		assertEquals("", TelefoneBr.nacional(null));
 	}

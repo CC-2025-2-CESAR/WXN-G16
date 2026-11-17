@@ -14,6 +14,10 @@ const SELOS: Record<OrigemConversa, { rotulo: string; dica: string }> = {
     rotulo: 'WhatsApp',
     dica: 'Cliente de verdade, pelo WhatsApp.',
   },
+  TELEGRAM: {
+    rotulo: 'Telegram',
+    dica: 'Cliente de verdade, pelo Telegram.',
+  },
 };
 
 /** Um selo pequeno que diz de onde a conversa veio, para ninguém confundir um teste com um cliente real. */

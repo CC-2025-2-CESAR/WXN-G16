@@ -95,6 +95,28 @@ class ChatServicoTest {
 	}
 
 	@Test
+	void clienteDoTelegramEIdentificadoPeloIdDoChatEGanhaONomeDoTelegram() {
+		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of());
+		when(empresas.findFirstByNomeOrderByIdAsc(EMPRESA_PADRAO)).thenReturn(Optional.of(empresa));
+		when(clientes.save(any(Cliente.class))).thenAnswer(chamada -> chamada.getArgument(0));
+		when(chatbots.findFirstByAtivoTrueOrderByIdAsc()).thenReturn(Optional.of(lily));
+		when(orquestrador.processarTurno(any(), eq("Oi"))).thenReturn(new ResultadoTurno("Olá!", StatusConversa.COM_CHATBOT));
+
+		servico(EMPRESA_PADRAO).receber(OrigemConversa.TELEGRAM, "tg:7700000001", "Maria Souza", "Oi");
+
+		ArgumentCaptor<java.util.Collection<String>> procurados = ArgumentCaptor.forClass(java.util.Collection.class);
+		verify(clientes).findByTelefoneIn(procurados.capture());
+		assertEquals(List.of("tg:7700000001"), List.copyOf(procurados.getValue()));
+		ArgumentCaptor<Cliente> novo = ArgumentCaptor.forClass(Cliente.class);
+		verify(clientes).save(novo.capture());
+		assertEquals("tg:7700000001", novo.getValue().getTelefone());
+		assertEquals("Maria Souza", novo.getValue().getNome());
+		ArgumentCaptor<Conversa> conversa = ArgumentCaptor.forClass(Conversa.class);
+		verify(conversas).save(conversa.capture());
+		assertEquals(OrigemConversa.TELEGRAM, conversa.getValue().getOrigem());
+	}
+
+	@Test
 	void conversaNovaNasceComAOrigemDoCanal() {
 		Cliente maria = cliente(empresa, "81999990101");
 		when(clientes.findByTelefoneIn(anyCollection())).thenReturn(List.of(maria));

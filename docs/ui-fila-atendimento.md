@@ -59,7 +59,8 @@ fila, então, para repetir a demonstração do zero, recrie o banco.
   conversa que sumiu), mostra o `detail` da resposta e recarrega a fila.
 - Mostra um **selo de origem** ao lado do cliente, na lista e no detalhe, para ninguém confundir um teste com um cliente
   de verdade: **Demonstração** (contorno tracejado: dados fictícios do perfil `demo`), **Simulador** (teste escrito por
-  alguém do grupo no simulador de WhatsApp ou pela API de chat) e **WhatsApp** (cliente real). A origem é gravada quando a
+  alguém do grupo no simulador de WhatsApp ou pela API de chat), **WhatsApp** e **Telegram** (clientes reais, cada um pelo
+  seu canal; o cliente do Telegram aparece como "Telegram #id", porque não tem telefone). A origem é gravada quando a
   conversa é aberta (`conversa.origem`) e não muda depois; as conversas que já existiam antes da coluna contam como
   demonstração.
 

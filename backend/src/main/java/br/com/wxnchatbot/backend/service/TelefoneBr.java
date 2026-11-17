@@ -4,9 +4,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import br.com.wxnchatbot.backend.model.Cliente;
+
 /**
  * Telefones brasileiros do jeito que o WhatsApp os entrega (55 + DDD + número, às vezes sem o nono dígito) e do jeito
- * que ficam no cadastro (DDD + número).
+ * que ficam no cadastro (DDD + número). O cliente do Telegram não tem telefone: ele é identificado por {@code tg:<id>}
+ * (veja {@link Cliente#ehIdentificadorDoTelegram}), que passa daqui sem mudar.
  */
 final class TelefoneBr {
 
@@ -17,6 +20,9 @@ final class TelefoneBr {
 
 	/** Só os dígitos, sem o 55 do país quando ele está presente. */
 	static String nacional(String telefone) {
+		if (Cliente.ehIdentificadorDoTelegram(telefone)) {
+			return telefone.strip();
+		}
 		String digitos = telefone == null ? "" : telefone.replaceAll("\\D", "");
 		boolean comPais = digitos.startsWith(DDI) && (digitos.length() == 12 || digitos.length() == 13);
 		return comPais ? digitos.substring(DDI.length()) : digitos;
@@ -25,6 +31,9 @@ final class TelefoneBr {
 	/** As formas em que o mesmo número pode estar no cadastro: com e sem o 55, com e sem o nono dígito. */
 	static List<String> variantes(String telefone) {
 		String nacional = nacional(telefone);
+		if (Cliente.ehIdentificadorDoTelegram(nacional)) {
+			return List.of(nacional);
+		}
 		Set<String> formas = new LinkedHashSet<>();
 		formas.add(nacional);
 		if (nacional.length() == 10) {

@@ -39,6 +39,8 @@ export const iniciais = (nome: string) =>
     .join("");
 
 export function formatarTelefone(telefone: string) {
+  // O Telegram não entrega o telefone: o cliente é identificado por "tg:<id do chat>".
+  if (telefone.startsWith("tg:")) return `Telegram #${telefone.slice(3)}`;
   const digitos = telefone.replace(/\D/g, "");
   const comPais =
     (digitos.length === 12 || digitos.length === 13) &&

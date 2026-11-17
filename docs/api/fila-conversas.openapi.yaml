@@ -192,7 +192,8 @@ components:
           example: Maria Souza
         clienteTelefone:
           type: string
-          description: Apenas dígitos
+          description: |
+            Apenas dígitos. O cliente que chega pelo Telegram não tem telefone e vem como `tg:<id do chat>`.
           example: '81999990001'
         motivo:
           type: string
@@ -227,11 +228,11 @@ components:
             $ref: '#/components/schemas/Mensagem'
     OrigemConversa:
       type: string
-      enum: [DEMONSTRACAO, SIMULADOR, WHATSAPP]
+      enum: [DEMONSTRACAO, SIMULADOR, WHATSAPP, TELEGRAM]
       description: |
         De onde a conversa veio. DEMONSTRACAO são os dados fictícios do perfil `demo`; SIMULADOR é um teste escrito por
-        alguém do grupo no simulador de WhatsApp (ou pela API de chat); WHATSAPP é um cliente de verdade. A tela mostra um
-        selo com esse valor.
+        alguém do grupo no simulador de WhatsApp (ou pela API de chat); WHATSAPP e TELEGRAM são clientes de verdade, cada um
+        pelo seu canal. A tela mostra um selo com esse valor.
     Mensagem:
       type: object
       required: [tipoRemetente, conteudo, enviadaEm]
