@@ -13,5 +13,8 @@ public enum OrigemConversa {
 	SIMULADOR,
 
 	/** Mensagem de um cliente pelo WhatsApp de verdade (Cloud API da Meta). */
-	WHATSAPP
+	WHATSAPP,
+
+	/** Mensagem de um cliente pelo Telegram (Bot API). */
+	TELEGRAM
 }

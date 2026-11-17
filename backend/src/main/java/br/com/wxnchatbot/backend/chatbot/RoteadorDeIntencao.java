@@ -118,7 +118,7 @@ public class RoteadorDeIntencao {
 			case CONSULTAR_DEMANDA -> consultar(empresaId, conversa.getId(), texto, esperaProtocolo, historico);
 			case ABRIR_CHAMADO -> abrirChamado(empresaId, conversa.getId(), texto, esperaDetalhes, rota.descricaoSuficiente(),
 					historico);
-			case DUVIDA -> new Responder(llm.responder(PromptDaLily.comConhecimento(conhecimento.texto()), historico));
+			case DUVIDA -> responderDuvida(historico);
 			case FALAR_COM_HUMANO -> encaminhar("O cliente pediu para falar com um atendente", Situacao.ENCAMINHANDO,
 					ENCAMINHANDO, historico);
 			case FORA_DE_ESCOPO -> responder(Situacao.FORA_DE_ESCOPO, FORA_DE_ESCOPO, historico);
@@ -129,6 +129,15 @@ public class RoteadorDeIntencao {
 
 	private Responder responder(Situacao situacao, String rascunho, List<MensagemLlm> historico) {
 		return new Responder(redator.escrever(situacao, rascunho, historico));
+	}
+
+	private DecisaoDoTurno responderDuvida(List<MensagemLlm> historico) {
+		String texto = llm.responder(PromptDaLily.comConhecimento(conhecimento.texto()), historico);
+		if (FiltroDeSaida.seguro(texto)) {
+			return new Responder(texto);
+		}
+		return encaminhar("A resposta da LLM foi barrada pelo filtro de saída", Situacao.ENCAMINHANDO_POR_DUVIDA,
+				ENCAMINHANDO_POR_DUVIDA, historico);
 	}
 
 	private Encaminhar encaminhar(String motivo, Situacao situacao, String rascunho, List<MensagemLlm> historico) {
