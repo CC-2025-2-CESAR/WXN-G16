@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: |
     Contrato usado pela tela de atendimento para ver a fila de conversas que
-    aguardam um atendente humano, abrir uma conversa, assumi-la e encerrá-la.
+    aguardam um atendente humano, abrir uma conversa, assumi-la, responder ao cliente e encerrá-la.
     É uma camada fina sobre o `FilaConversasServico`: as regras de negócio
     ficam no serviço e no modelo, não nos controllers.
 
@@ -138,6 +138,75 @@ paths:
                 $ref: '#/components/schemas/Problema'
         '500':
           $ref: '#/components/responses/ErroInterno'
+  /api/conversas/{conversaId}/atendimento/mensagens:
+    get:
+      operationId: listarMensagensDoAtendimento
+      summary: Histórico da conversa, para o atendente
+      description: |
+        Todas as mensagens da conversa (do cliente, da Lily e do atendente), da mais antiga para a mais nova, em qualquer
+        estado dela. Depois que o atendente assume, a conversa continua crescendo com as mensagens do cliente; a tela
+        consulta isto a cada poucos segundos.
+      parameters:
+        - $ref: '#/components/parameters/ConversaId'
+      responses:
+        '200':
+          description: Mensagens da conversa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Mensagem'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          description: A conversa não existe
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '500':
+          $ref: '#/components/responses/ErroInterno'
+    post:
+      operationId: enviarMensagemDoAtendente
+      summary: O atendente responde ao cliente
+      description: |
+        Só vale para uma conversa em atendimento (o atendente já a assumiu e ela não foi encerrada). A mensagem é gravada
+        primeiro e depois entregue ao cliente pelo canal dele (hoje, o Telegram). Se a entrega falhar, ou se a conversa
+        vier de uma origem sem canal de saída (simulador, demonstração, WhatsApp), a resposta é `200` com
+        `entregue: false` e um `aviso` em português: a mensagem continua no histórico.
+      parameters:
+        - $ref: '#/components/parameters/ConversaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnviarMensagemDoAtendente'
+      responses:
+        '200':
+          description: Mensagem gravada (veja `entregue` para saber se chegou ao cliente)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoDoEnvio'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          description: A conversa não existe
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '409':
+          description: >
+            A conversa não está em atendimento: ainda está com a Lily, aguarda um atendente na fila ou já foi encerrada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '500':
+          $ref: '#/components/responses/ErroInterno'
   /api/atendentes:
     get:
       operationId: listarAtendentes
@@ -252,6 +321,28 @@ components:
         atendenteId:
           type: string
           format: uuid
+    EnviarMensagemDoAtendente:
+      type: object
+      required: [texto]
+      properties:
+        texto:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: Texto da resposta. Não pode ser só espaços.
+    ResultadoDoEnvio:
+      type: object
+      required: [mensagem, entregue]
+      properties:
+        mensagem:
+          $ref: '#/components/schemas/Mensagem'
+        entregue:
+          type: boolean
+          description: Verdadeiro quando a mensagem também chegou ao cliente pelo canal dele
+        aviso:
+          type: string
+          nullable: true
+          description: Quando `entregue` é falso, o motivo, em português, para mostrar ao atendente
     Atendente:
       type: object
       required: [id, nome, email, disponivel]
