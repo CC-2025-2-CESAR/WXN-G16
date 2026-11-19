@@ -78,8 +78,11 @@ export default function App() {
   useEffect(() => {
     if (!selectedId || modal) return;
     const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !(e.target instanceof HTMLInputElement))
-        fecharPainel();
+      // No campo de resposta, Esc não pode fechar o painel e jogar fora o texto digitado.
+      const emCampo =
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement;
+      if (e.key === "Escape" && !emCampo) fecharPainel();
     };
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);

@@ -19,6 +19,16 @@ export interface MensagemResumo {
   enviadaEm: string;
 }
 
+/**
+ * Resposta do envio de uma mensagem do atendente ao cliente.
+ * `entregue = false` quer dizer que a mensagem foi salva, mas não chegou ao cliente; `aviso` explica o motivo.
+ */
+export interface RespostaDoAtendente {
+  mensagem: MensagemResumo;
+  entregue: boolean;
+  aviso: string | null;
+}
+
 export interface DetalheConversaFila {
   conversaId: string;
   clienteNome: string;
