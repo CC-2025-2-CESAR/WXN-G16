@@ -1,12 +1,16 @@
 package br.com.wxnchatbot.backend.llm;
 
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
@@ -21,18 +25,32 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Fala com o Gemini pela API REST (generateContent), sem SDK. A chave vai no cabeçalho x-goog-api-key, nunca na URL,
  * para não aparecer em mensagens de erro nem em logs.
+ *
+ * <p>O plano grátis do Gemini oscila (503 "alta demanda" e 429 por minuto são comuns), e cada falha vira o plano B da Lily
+ * (encaminhar para um atendente). Por isso as falhas passageiras (429, 500, 502, 503 e 504) são tentadas de novo, até
+ * duas vezes, com uma pausa curta. Erro do pedido (400, 403, 404) e resposta lenta demais não são repetidos.
  */
 public class LlmClientGemini implements LlmClient {
 
+	private static final Logger log = LoggerFactory.getLogger(LlmClientGemini.class);
 	private static final int TAMANHO_MAXIMO_DO_ERRO = 300;
+	private static final List<Duration> PAUSAS_PADRAO = List.of(Duration.ofMillis(700), Duration.ofMillis(1500));
+	private static final Set<Integer> STATUS_PASSAGEIROS = Set.of(429, 500, 502, 503, 504);
 
 	private final RestClient cliente;
+	private final List<Duration> pausas;
 	private final JsonMapper json;
 	private final String chave;
 	private final String modelo;
 	private final String nivelDePensamento;
 
 	public LlmClientGemini(GeminiProperties propriedades, JsonMapper json) {
+		this(propriedades, json, PAUSAS_PADRAO);
+	}
+
+	/** {@code pausas}: quanto esperar antes de cada nova tentativa; o tamanho da lista é o número de tentativas extras. */
+	LlmClientGemini(GeminiProperties propriedades, JsonMapper json, List<Duration> pausas) {
+		this.pausas = List.copyOf(pausas);
 		HttpClient http = HttpClient.newBuilder().connectTimeout(propriedades.timeoutConexao()).build();
 		JdkClientHttpRequestFactory fabrica = new JdkClientHttpRequestFactory(http);
 		fabrica.setReadTimeout(propriedades.timeoutLeitura());
@@ -58,23 +76,42 @@ public class LlmClientGemini implements LlmClient {
 			throw new IllegalArgumentException("conversa não pode ser vazia");
 		}
 		Map<String, Object> corpo = montarCorpo(promptDoSistema, conversa, esquema);
-		String resposta;
-		try {
-			resposta = cliente.post()
-					.uri("/models/{modelo}:generateContent", modelo)
-					.header("x-goog-api-key", chave)
-					.contentType(MediaType.APPLICATION_JSON)
-					.accept(MediaType.APPLICATION_JSON)
-					.body(corpo)
-					.retrieve()
-					.body(String.class);
-		} catch (RestClientResponseException e) {
-			throw new LlmIndisponivelException("O Gemini respondeu HTTP " + e.getStatusCode().value() + ": "
-					+ resumirErro(e.getResponseBodyAsString()), e);
-		} catch (RestClientException e) {
-			throw new LlmIndisponivelException("Falha ao falar com o Gemini: " + e.getMessage(), e);
+		for (int tentativa = 0;; tentativa++) {
+			try {
+				return extrairTexto(enviar(corpo));
+			} catch (RestClientResponseException e) {
+				int status = e.getStatusCode().value();
+				if (tentativa < pausas.size() && STATUS_PASSAGEIROS.contains(status)) {
+					log.warn("O Gemini respondeu HTTP {}; tentando de novo ({}/{})", status, tentativa + 1, pausas.size());
+					esperar(pausas.get(tentativa));
+					continue;
+				}
+				throw new LlmIndisponivelException("O Gemini respondeu HTTP " + status + ": "
+						+ resumirErro(e.getResponseBodyAsString()), e);
+			} catch (RestClientException e) {
+				throw new LlmIndisponivelException("Falha ao falar com o Gemini: " + e.getMessage(), e);
+			}
 		}
-		return extrairTexto(resposta);
+	}
+
+	private String enviar(Map<String, Object> corpo) {
+		return cliente.post()
+				.uri("/models/{modelo}:generateContent", modelo)
+				.header("x-goog-api-key", chave)
+				.contentType(MediaType.APPLICATION_JSON)
+				.accept(MediaType.APPLICATION_JSON)
+				.body(corpo)
+				.retrieve()
+				.body(String.class);
+	}
+
+	private static void esperar(Duration pausa) {
+		try {
+			Thread.sleep(pausa);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new LlmIndisponivelException("Interrompido enquanto esperava para falar de novo com o Gemini", e);
+		}
 	}
 
 	/**
