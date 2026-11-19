@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.junit.jupiter.api.AfterEach;
@@ -32,6 +34,8 @@ class LlmClientGeminiTest {
 	private final List<String> caminhos = new CopyOnWriteArrayList<>();
 	private final List<String> chaves = new CopyOnWriteArrayList<>();
 	private final List<JsonNode> corpos = new CopyOnWriteArrayList<>();
+	/** Status das próximas chamadas, antes de voltar ao {@code statusDaResposta} (que é o que sobra). */
+	private final Queue<Integer> statusSeguintes = new ConcurrentLinkedQueue<>();
 
 	private HttpServer servidor;
 	private volatile int statusDaResposta = 200;
@@ -49,18 +53,32 @@ class LlmClientGeminiTest {
 		servidor.stop(0);
 	}
 
+	/** Sem tentativas extras: cada falha do servidor vira a exceção na hora. */
 	private LlmClientGemini gemini(String nivelDePensamento) {
-		return new LlmClientGemini(new GeminiProperties(CHAVE, "gemini-3.5-flash-lite", nivelDePensamento,
-				"http://127.0.0.1:" + servidor.getAddress().getPort() + "/v1beta", Duration.ofMillis(500), Duration.ofMillis(800)), json);
+		return gemini(nivelDePensamento, List.of());
+	}
+
+	private LlmClientGemini gemini(String nivelDePensamento, List<Duration> pausas) {
+		return new LlmClientGemini(propriedades(nivelDePensamento), json, pausas);
+	}
+
+	private GeminiProperties propriedades(String nivelDePensamento) {
+		return new GeminiProperties(CHAVE, "gemini-3.5-flash-lite", nivelDePensamento,
+				"http://127.0.0.1:" + servidor.getAddress().getPort() + "/v1beta", Duration.ofMillis(500), Duration.ofMillis(800));
 	}
 
 	private void tratar(HttpExchange troca) throws IOException {
 		caminhos.add(troca.getRequestMethod() + " " + troca.getRequestURI());
 		chaves.add(troca.getRequestHeaders().getFirst("x-goog-api-key"));
 		corpos.add(json.readTree(new String(troca.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
-		byte[] bytes = corpoDaResposta.getBytes(StandardCharsets.UTF_8);
+		Integer proximo = statusSeguintes.poll();
+		int status = proximo != null ? proximo : statusDaResposta;
+		String corpoDaVez = proximo != null && proximo != 200
+				? "{\"error\":{\"code\":" + proximo + ",\"message\":\"Sobrecarregado\",\"status\":\"UNAVAILABLE\"}}"
+				: corpoDaResposta;
+		byte[] bytes = corpoDaVez.getBytes(StandardCharsets.UTF_8);
 		troca.getResponseHeaders().add("Content-Type", "application/json");
-		troca.sendResponseHeaders(statusDaResposta, bytes.length);
+		troca.sendResponseHeaders(status, bytes.length);
 		troca.getResponseBody().write(bytes);
 		troca.close();
 	}
@@ -134,6 +152,50 @@ class LlmClientGeminiTest {
 				+ "{\"text\":\"Resposta \"},{\"text\":\"final\"}]}}]}";
 
 		assertEquals("Resposta final", gemini("low").responder("Prompt", List.of(cliente("Oi"))));
+	}
+
+	@Test
+	void falhaPassageiraDoGeminiEhTentadaDeNovoESeDerCertoNaoVirouPlanoB() {
+		statusSeguintes.addAll(List.of(503, 429));
+
+		String resposta = gemini("low", List.of(Duration.ZERO, Duration.ZERO)).responder("Prompt", List.of(cliente("Oi")));
+
+		assertEquals("Olá! Como posso ajudar?", resposta);
+		assertEquals(3, caminhos.size());
+	}
+
+	@Test
+	void depoisDasTentativasExtrasAFalhaViraLlmIndisponivel() {
+		statusDaResposta = 503;
+
+		LlmIndisponivelException erro = assertThrows(LlmIndisponivelException.class,
+				() -> gemini("low", List.of(Duration.ZERO, Duration.ZERO)).responder("Prompt", List.of(cliente("Oi"))));
+
+		assertTrue(erro.getMessage().contains("HTTP 503"));
+		assertEquals(3, caminhos.size());
+	}
+
+	@Test
+	void erroDoPedidoNaoEhTentadoDeNovo() {
+		for (int status : new int[] { 400, 403, 404 }) {
+			caminhos.clear();
+			statusDaResposta = status;
+
+			assertThrows(LlmIndisponivelException.class,
+					() -> gemini("low", List.of(Duration.ZERO, Duration.ZERO)).responder("Prompt", List.of(cliente("Oi"))));
+
+			assertEquals(1, caminhos.size(), "HTTP " + status);
+		}
+	}
+
+	@Test
+	void oClienteDeProducaoJaTentaDeNovoComPausasCurtas() {
+		statusSeguintes.add(503);
+
+		String resposta = new LlmClientGemini(propriedades("low"), json).responder("Prompt", List.of(cliente("Oi")));
+
+		assertEquals("Olá! Como posso ajudar?", resposta);
+		assertEquals(2, caminhos.size());
 	}
 
 	@Test
