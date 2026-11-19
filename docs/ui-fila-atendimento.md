@@ -55,6 +55,18 @@ fila, então, para repetir a demonstração do zero, recrie o banco.
   escolha fica no `localStorage` do navegador) e assume a conversa
   (`POST /api/fila/{conversaId}/assumir`).
 - Encerra uma conversa assumida (`POST /api/conversas/{conversaId}/encerrar`).
+- No painel de uma conversa **em atendimento** há um campo para responder ao cliente. Enter envia, Shift+Enter quebra a
+  linha, o limite é de 4000 caracteres e o campo fica desabilitado enquanto a mensagem é enviada
+  (`POST /api/conversas/{conversaId}/atendimento/mensagens`, corpo `{"texto": "..."}`). A mensagem aparece na hora no
+  histórico. Se a resposta vier com `entregue = false`, a mensagem ficou salva mas não chegou ao cliente, e o painel mostra
+  o `aviso` acima do campo; se o envio falhar, o painel mostra o erro e **mantém** o texto digitado. Numa conversa que
+  ainda está na fila o campo não aparece: é preciso assumir antes.
+- O histórico de uma conversa em atendimento se atualiza sozinho a cada 3 segundos
+  (`GET /api/conversas/{conversaId}/atendimento/mensagens`), com as mensagens novas do cliente e as do atendente. A
+  atualização só roda com a aba visível; se o servidor ficar fora do ar, as mensagens já mostradas continuam na tela e
+  aparece um aviso discreto até a conexão voltar. Se o servidor responder `404` ou `409` (a conversa saiu do
+  atendimento), a atualização para e o campo de resposta é desabilitado. A tela só rola sozinha para as mensagens novas
+  se o atendente já estava perto do fim da conversa.
 - Quando o servidor recusa algo (conversa já assumida, atendente indisponível,
   conversa que sumiu), mostra o `detail` da resposta e recarrega a fila.
 - Mostra um **selo de origem** ao lado do cliente, na lista e no detalhe, para ninguém confundir um teste com um cliente
@@ -73,8 +85,9 @@ consegue e o outro recebe `409`.
 - O backend não tem listagem de conversas assumidas. A lista "em atendimento"
   da tela só existe na memória da página: ao recarregar, as conversas saem da
   tela, mas continuam com o atendente no banco.
-- Histórico, transferência para outro atendente e envio de mensagem pelo
-  atendente não existem; ficam para a próxima história.
+- A transferência para outro atendente não existe; fica para a próxima história. Também não há histórico de conversas
+  já encerradas na tela.
 - Não há autenticação: o atendente é só uma escolha na tela, e a API aceita
   chamadas de qualquer cliente que a alcance.
-- A atualização é por consulta periódica (15 s), sem tempo real.
+- A atualização é por consulta periódica (15 s na fila, 3 s no histórico da conversa em atendimento), sem tempo real.
+- O texto digitado no campo de resposta só existe na memória da página: trocar de conversa ou recarregar descarta o rascunho.

@@ -1,11 +1,13 @@
-import type { Atendente, ConversaNaFila, DetalheConversaFila } from '../types/fila';
+import type { Atendente, ConversaNaFila, DetalheConversaFila, MensagemResumo, RespostaDoAtendente } from '../types/fila';
 import type { HealthResponse } from '../types/health';
 import {
   abrirDemoConversa,
   assumirDemoConversa,
   encerrarDemoConversa,
+  enviarDemoMensagem,
   listarDemoAtendentes,
   listarDemoFila,
+  listarDemoMensagensDoAtendimento,
 } from './demo';
 
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
@@ -100,6 +102,38 @@ export async function encerrarConversa(conversaId: string) {
     return;
   }
   await requisitar(`/api/conversas/${conversaId}/encerrar`, { method: 'POST' });
+}
+
+/** Histórico completo de uma conversa em atendimento, da mais antiga para a mais nova. */
+export async function listarMensagensDoAtendimento(conversaId: string, signal?: AbortSignal): Promise<MensagemResumo[]> {
+  if (DEMO_ATIVO) {
+    signal?.throwIfAborted();
+    const mensagens = listarDemoMensagensDoAtendimento(conversaId);
+    if (!mensagens) throw new ErroApi('Conversa não encontrada em atendimento.', 404);
+    return mensagens;
+  }
+  const resposta = await requisitar(`/api/conversas/${conversaId}/atendimento/mensagens`, { signal });
+  return resposta.json();
+}
+
+/** Envia ao cliente uma mensagem escrita pelo atendente (1 a 4000 caracteres). */
+export async function enviarMensagemDoAtendente(conversaId: string, texto: string): Promise<RespostaDoAtendente> {
+  if (DEMO_ATIVO) {
+    const resultado = enviarDemoMensagem(conversaId, texto);
+    if (resultado === 'conversa-ausente') throw new ErroApi('Esta conversa não está em atendimento.', 409);
+    if (resultado === 'texto-invalido') throw new ErroApi('Escreva uma mensagem de 1 a 4000 caracteres.', 400);
+    return {
+      mensagem: resultado,
+      entregue: false,
+      aviso: 'Modo demonstração: a mensagem não sai para nenhum aplicativo.',
+    };
+  }
+  const resposta = await requisitar(`/api/conversas/${conversaId}/atendimento/mensagens`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texto }),
+  });
+  return resposta.json();
 }
 
 export async function listarAtendentes(signal?: AbortSignal): Promise<Atendente[]> {
