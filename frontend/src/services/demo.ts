@@ -92,6 +92,8 @@ const atendentes: Atendente[] = [
 const criadoEm = Date.now();
 const aguardando = new Set(cenarios.map((cenario) => cenario.id));
 const assumidas = new Set<string>();
+// Respostas dos atendentes enviadas nesta página, por conversa (só existem na memória).
+const respostas = new Map<string, MensagemResumo[]>();
 const abertoEm = (cenario: Cenario) => new Date(criadoEm - cenario.minutosAtras * 60_000).toISOString();
 
 export function listarDemoFila(): ConversaNaFila[] {
@@ -106,19 +108,23 @@ export function listarDemoFila(): ConversaNaFila[] {
   }));
 }
 
-export function abrirDemoConversa(id: string): DetalheConversaFila | null {
-  const cenario = cenarios.find((item) => item.id === id && aguardando.has(item.id));
-  if (!cenario) return null;
+function mensagensDoCenario(cenario: Cenario): MensagemResumo[] {
   const horario = new Date(abertoEm(cenario)).getTime();
   const falas: Fala[] = [
     ['CHATBOT', 'Oi, eu sou a Lily, assistente virtual da WXN. Como posso ajudar?'],
     ...cenario.falas,
   ];
-  const mensagens: MensagemResumo[] = falas.map(([tipoRemetente, conteudo], index) => ({
+  return falas.map(([tipoRemetente, conteudo], index) => ({
     tipoRemetente,
     conteudo,
     enviadaEm: new Date(horario - (falas.length - index) * 40_000).toISOString(),
   }));
+}
+
+export function abrirDemoConversa(id: string): DetalheConversaFila | null {
+  const cenario = cenarios.find((item) => item.id === id && aguardando.has(item.id));
+  if (!cenario) return null;
+  const mensagens = mensagensDoCenario(cenario);
   return {
     conversaId: cenario.id,
     clienteNome: cenario.nome,
@@ -147,5 +153,22 @@ export function assumirDemoConversa(conversaId: string, atendenteId: string): 'o
 export function encerrarDemoConversa(conversaId: string): boolean {
   if (!assumidas.has(conversaId)) return false;
   assumidas.delete(conversaId);
+  respostas.delete(conversaId);
   return true;
+}
+
+/** Histórico completo de uma conversa em atendimento: falas do cenário mais as respostas enviadas. */
+export function listarDemoMensagensDoAtendimento(conversaId: string): MensagemResumo[] | null {
+  const cenario = cenarios.find((item) => item.id === conversaId);
+  if (!cenario || !assumidas.has(conversaId)) return null;
+  return [...mensagensDoCenario(cenario), ...(respostas.get(conversaId) ?? [])].map((mensagem) => ({ ...mensagem }));
+}
+
+export function enviarDemoMensagem(conversaId: string, texto: string): MensagemResumo | 'conversa-ausente' | 'texto-invalido' {
+  if (!assumidas.has(conversaId)) return 'conversa-ausente';
+  const conteudo = texto.trim();
+  if (!conteudo || conteudo.length > 4000) return 'texto-invalido';
+  const mensagem: MensagemResumo = { tipoRemetente: 'ATENDENTE', conteudo, enviadaEm: new Date().toISOString() };
+  respostas.set(conversaId, [...(respostas.get(conversaId) ?? []), mensagem]);
+  return { ...mensagem };
 }

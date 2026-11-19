@@ -1,6 +1,14 @@
-import { Fragment, useEffect, useRef } from "react";
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { SeloDeOrigem } from "../../components/SeloDeOrigem";
 import { useDetalheFila } from "../../hooks/useDetalheFila";
+import { useMensagensDoAtendimento } from "../../hooks/useMensagensDoAtendimento";
+import { enviarMensagemDoAtendente, mensagemDoErro } from "../../services/api";
 import type {
   Atendente,
   ConversaNaFila,
@@ -23,6 +31,9 @@ const kinds = {
   CHATBOT: "bot",
   ATENDENTE: "agent",
 } satisfies Record<TipoRemetente, string>;
+const LIMITE_MENSAGEM = 4000;
+// Distância (em px) do fim da conversa em que ainda contamos o atendente como "acompanhando".
+const MARGEM_DO_FIM = 80;
 type Props = {
   conversa: ConversaNaFila | undefined;
   atendimento: EmAtendimento | undefined;
@@ -47,18 +58,92 @@ export function ConversationDetail({
   onSettings,
   onIndisponivel,
 }: Props) {
+  const emAtendimento = atendimento !== undefined;
   const busca = useDetalheFila(
     conversa && !atendimento ? conversa.conversaId : null,
   );
-  const mensagens = atendimento?.detalhe.mensagens ?? busca.detalhe?.mensagens;
+  // Na conversa assumida o histórico se atualiza sozinho; até a primeira resposta do servidor, vale o retrato de quando foi assumida.
+  const aoVivo = useMensagensDoAtendimento(
+    atendimento?.detalhe.conversaId ?? null,
+    emAtendimento,
+    atendimento?.detalhe.mensagens,
+  );
+  const mensagens = atendimento ? aoVivo.mensagens : busca.detalhe?.mensagens;
   const total = mensagens?.length;
   const threadRef = useRef<HTMLDivElement>(null);
+  const campoRef = useRef<HTMLTextAreaElement>(null);
+  const pertoDoFim = useRef(true);
+  const enviandoRef = useRef(false);
+  const devolverFoco = useRef(false);
+  const estavaEmAtendimento = useRef(emAtendimento);
+  const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [faixa, setFaixa] = useState<{ erro: boolean; texto: string } | null>(
+    null,
+  );
+
+  const aoRolar = () => {
+    const thread = threadRef.current;
+    if (!thread) return;
+    pertoDoFim.current =
+      thread.scrollHeight - thread.scrollTop - thread.clientHeight <
+      MARGEM_DO_FIM;
+  };
+  // Só acompanha as mensagens novas quem já estava perto do fim; quem está lendo o começo não perde o lugar.
   useEffect(() => {
-    threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight });
-  }, [total, atendimento]);
+    if (pertoDoFim.current)
+      threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight });
+  }, [total, emAtendimento]);
   useEffect(() => {
     if (busca.indisponivel) onIndisponivel();
   }, [busca.indisponivel, onIndisponivel]);
+  // Ao assumir a conversa o botão "Assumir" some; o foco vai direto para o campo de resposta.
+  useEffect(() => {
+    if (emAtendimento && !estavaEmAtendimento.current)
+      campoRef.current?.focus();
+    estavaEmAtendimento.current = emAtendimento;
+  }, [emAtendimento]);
+  // O campo fica desabilitado durante o envio e só pode receber o foco de volta depois de habilitado.
+  useEffect(() => {
+    if (!enviando && devolverFoco.current) {
+      devolverFoco.current = false;
+      campoRef.current?.focus();
+    }
+  }, [enviando]);
+
+  const enviar = async () => {
+    const conversaId = atendimento?.detalhe.conversaId;
+    const conteudo = texto.trim();
+    if (!conversaId || !conteudo || enviandoRef.current) return;
+    enviandoRef.current = true;
+    setEnviando(true);
+    setFaixa(null);
+    try {
+      const resposta = await enviarMensagemDoAtendente(conversaId, conteudo);
+      pertoDoFim.current = true;
+      aoVivo.adicionar(resposta.mensagem);
+      setTexto("");
+      if (!resposta.entregue)
+        setFaixa({
+          erro: false,
+          texto:
+            resposta.aviso ||
+            "A mensagem foi salva, mas não chegou ao cliente.",
+        });
+    } catch (erro) {
+      setFaixa({ erro: true, texto: mensagemDoErro(erro) });
+    } finally {
+      enviandoRef.current = false;
+      devolverFoco.current = true;
+      setEnviando(false);
+    }
+  };
+  const aoTeclar = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    void enviar();
+  };
+
   const c = atendimento?.detalhe ?? conversa;
   if (!c)
     return (
@@ -73,6 +158,7 @@ export function ConversationDetail({
     );
   const responsavel = atendimento?.atendente ?? atendente;
   const ultima = mensagens?.at(-1);
+  const bloqueado = aoVivo.indisponivel;
   const metadados = [
     ["Na fila desde", dataHora(c.abertoEm)],
     atendimento
@@ -129,6 +215,7 @@ export function ConversationDetail({
       <div
         className="chat-thread"
         ref={threadRef}
+        onScroll={aoRolar}
         role="log"
         aria-label={`Histórico de ${c.clienteNome}`}
         aria-busy={busca.carregando}
@@ -160,7 +247,7 @@ export function ConversationDetail({
                 </div>
               )}
               <div
-                className={`chat-message ${kind === "client" ? "outbound" : ""}`}
+                className={`chat-message ${kind === "client" ? "outbound" : ""} ${kind === "agent" ? "agent" : ""}`}
               >
                 <div className="bubble">
                   {kind === "bot" && (
@@ -181,12 +268,20 @@ export function ConversationDetail({
             </Fragment>
           );
         })}
-        {atendimento && (
-          <div className="system-message">
-            Histórico até o momento em que você assumiu a conversa.
-          </div>
-        )}
       </div>
+      {atendimento && bloqueado && (
+        <div className="error-banner thread-status" role="alert">
+          <span>Esta conversa não está mais em atendimento.</span>
+        </div>
+      )}
+      {atendimento && aoVivo.semConexao && (
+        <div className="thread-status offline" role="status">
+          <span>Não foi possível atualizar as mensagens. Tentando de novo…</span>
+          <button className="text-button" onClick={aoVivo.recarregar}>
+            Tentar agora
+          </button>
+        </div>
+      )}
       <footer className="composer">
         <div className="composer-top">
           <strong>
@@ -205,23 +300,86 @@ export function ConversationDetail({
             </button>
           )}
         </div>
-        <div className="detail-actions">
-          {atendimento ? (
-            <button className="button" disabled={ocupado} onClick={onResolve}>
-              <Icon name="check" />
-              Encerrar conversa
-            </button>
-          ) : (
-            <button
-              className="button"
-              disabled={ocupado || !busca.detalhe || !atendente}
-              onClick={() => busca.detalhe && onAssume(busca.detalhe)}
-            >
-              Assumir conversa
-              <Icon name="chevron-right" />
-            </button>
-          )}
-        </div>
+        {atendimento ? (
+          <form
+            className="reply-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void enviar();
+            }}
+          >
+            {faixa && (
+              <div
+                className={`composer-notice ${faixa.erro ? "error" : "warning"}`}
+                role="alert"
+              >
+                {faixa.texto}
+              </div>
+            )}
+            <textarea
+              ref={campoRef}
+              className="reply-input"
+              aria-label="Mensagem para o cliente"
+              aria-describedby="dica-resposta"
+              placeholder="Escreva a resposta ao cliente…"
+              maxLength={LIMITE_MENSAGEM}
+              rows={2}
+              value={texto}
+              disabled={enviando || bloqueado}
+              onChange={(e) => setTexto(e.target.value)}
+              onKeyDown={aoTeclar}
+            />
+            <div className="reply-hint" id="dica-resposta">
+              <span>Enter envia · Shift+Enter quebra a linha</span>
+              {texto.length >= LIMITE_MENSAGEM - 500 && (
+                <span>
+                  {texto.length}/{LIMITE_MENSAGEM}
+                </span>
+              )}
+            </div>
+            <div className="detail-actions">
+              <button
+                type="button"
+                className="button secondary"
+                disabled={ocupado}
+                onClick={onResolve}
+              >
+                <Icon name="check" />
+                Encerrar conversa
+              </button>
+              <button
+                type="submit"
+                className="button send-button"
+                disabled={enviando || bloqueado || texto.trim() === ""}
+              >
+                {enviando ? (
+                  "Enviando…"
+                ) : (
+                  <>
+                    Enviar
+                    <Icon name="send" />
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <p className="reply-hint-text">
+              Assuma a conversa para responder ao cliente.
+            </p>
+            <div className="detail-actions">
+              <button
+                className="button"
+                disabled={ocupado || !busca.detalhe || !atendente}
+                onClick={() => busca.detalhe && onAssume(busca.detalhe)}
+              >
+                Assumir conversa
+                <Icon name="chevron-right" />
+              </button>
+            </div>
+          </>
+        )}
       </footer>
     </>
   );

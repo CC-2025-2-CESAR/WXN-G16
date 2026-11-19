@@ -119,6 +119,14 @@ Service já atende isso: `https://wxn-g16-backend.azurewebsites.net/webhook/tele
   o telefone se a pessoa o compartilhar). O nome vem do nome da pessoa no Telegram. A fila mostra "Telegram #id".
 - A conversa ganha a origem `TELEGRAM`, e o dashboard mostra o selo **Telegram**.
 
+## O atendente responde pelo dashboard
+
+Quando a Lily encaminha a conversa, ela entra na fila do dashboard (selo **Telegram**). O atendente a assume e escreve
+no campo de mensagem do painel da conversa; o texto vai para o cliente pelo Telegram (`sendMessage` no chat dele) e fica
+no histórico. As mensagens que o cliente mandar depois aparecem no painel em poucos segundos, e a Lily continua calada
+até a conversa ser encerrada. A API é `POST/GET /api/conversas/{id}/atendimento/mensagens`
+([contrato](api/fila-conversas.openapi.yaml)).
+
 ## Quando algo não funciona
 
 | Sintoma | Causa provável |
@@ -130,11 +138,13 @@ Service já atende isso: `https://wxn-g16-backend.azurewebsites.net/webhook/tele
 | Log do polling com `HTTP 409` | Esse bot tem um webhook ativo, ou outro processo lê as mensagens dele. Use outro bot, ou desligue o webhook: `Invoke-RestMethod "https://api.telegram.org/bot$token/deleteWebhook"` |
 | O bot responde "Não consegui liberar o seu atendimento" | Não há empresa padrão configurada (passo 3 do Azure) |
 | O bot responde "Desculpe, tive um problema…" | Erro no backend ao atender; veja o log (o texto da mensagem do cliente não é registrado) |
-| Mensagem sem resposta depois de a conversa ir para um atendente | É assim: com a conversa na fila ou com um atendente, a Lily fica calada, e a resposta do atendente ainda não chega ao canal |
+| Mensagem sem resposta depois de a conversa ir para um atendente | É assim: com a conversa na fila ou com um atendente, a Lily fica calada. Quem responde é o atendente, pelo dashboard (veja "O atendente responde pelo dashboard") |
 
 ## Limitações
 
-- **A resposta do atendente não chega ao Telegram** (mesma limitação do WhatsApp e do simulador).
+- **A resposta do atendente chega ao Telegram, mas o cliente não é avisado se ela falhar do lado dele.** Se o Telegram
+  recusar a entrega (por exemplo, o cliente bloqueou o bot), a mensagem continua no histórico e o dashboard avisa o
+  atendente. No WhatsApp e no simulador a resposta do atendente ainda não sai.
 - **Cada canal é um cliente diferente:** a mesma pessoa pelo Telegram e pelo WhatsApp aparece como dois clientes, porque
   a identificação do cliente vem do canal (telefone ou `tg:<id>`).
 - **A ordem das mensagens e os repetidos:** o processamento é em segundo plano e a lista de atualizações já vistas fica em

@@ -13,11 +13,12 @@ IA) para a **WXN Tecnologia** — Projeto 3, Computação, CESAR School.
 > responder uma dúvida, passar para um atendente), a integração com a Gemini e o
 > canais do **Telegram** (o que dá para usar de verdade hoje) e do WhatsApp (os
 > dois desligados por padrão). O frontend tem o dashboard de atendimento (fila,
-> assumir e encerrar, com um selo que diz se a conversa é de demonstração, de
-> teste ou de um cliente real) e o **simulador de WhatsApp** para conversar com
-> a Lily. O que ainda **não existe** é a autenticação, a resposta do atendente
-> chegando ao cliente e o WhatsApp de verdade: o número de teste da Meta não
-> entrega para celular do Brasil ([`docs/whatsapp.md`](docs/whatsapp.md)). Veja
+> assumir, responder ao cliente e encerrar, com um selo que diz se a conversa é
+> de demonstração, de teste ou de um cliente real) e o **simulador de WhatsApp**
+> para conversar com a Lily. A resposta do atendente já chega ao cliente pelo
+> Telegram. O que ainda **não existe** é a autenticação, a resposta do atendente
+> no WhatsApp e no simulador e o WhatsApp de verdade: o número de teste da Meta
+> não entrega para celular do Brasil ([`docs/whatsapp.md`](docs/whatsapp.md)). Veja
 > [Próximos passos](#próximos-passos).
 
 ## Sobre o projeto
@@ -452,8 +453,9 @@ nesta ordem aproximada:
    dashboard assume e encerra *conversas*; falta o mesmo para o *ticket*, com
    erro 409 se ele já estiver finalizado, o caso de nenhum atendente disponível
    e o evento de domínio ao criar o ticket.
-2. **Resposta do atendente ao cliente** — hoje a mensagem do atendente fica
-   gravada, mas não chega ao cliente pelo simulador nem pelo WhatsApp.
+2. **Resposta do atendente ao cliente** — já chega ao cliente pelo Telegram
+   (campo de resposta no dashboard). Falta o mesmo no WhatsApp e no simulador:
+   hoje a mensagem fica gravada, mas não sai.
 3. **Identificar o cliente e a empresa** — o CNPJ da empresa já pode ser
    guardado, mas falta o desenho seguro: a empresa de um atendimento não pode
    vir do que o cliente digita no chat (alinhar com o Marcus; o #86 do Gabriel

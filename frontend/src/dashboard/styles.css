@@ -945,7 +945,8 @@ tr.selected td:first-child {
 .chat-thread {
   flex: 1;
   overflow-y: auto;
-  min-height: 0;
+  /* Com o campo de resposta o rodapé ficou mais alto: em telas baixas o painel rola em vez de espremer a conversa. */
+  min-height: 150px;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -1048,6 +1049,110 @@ tr.selected td:first-child {
   flex: 1;
   font-size: 12px;
   padding: 10px 7px;
+}
+
+/* Resposta do atendente ao cliente (rodapé do painel de conversa). */
+.chat-message.agent .bubble {
+  background: #eee8fd;
+  border-color: #d9cdf6;
+  color: #54428f;
+}
+.chat-message.agent .bubble-sender {
+  color: var(--accent);
+}
+.thread-status {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 8px 19px;
+  font-size: 11px;
+  line-height: 1.5;
+  border-top: 1px solid var(--line);
+}
+.error-banner.thread-status {
+  border-radius: 0;
+  font-size: 11px;
+}
+.thread-status.offline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #fbf5ff;
+  color: #7a5a92;
+}
+.thread-status .text-button {
+  font-size: 11px;
+  padding: 0;
+  flex-shrink: 0;
+}
+.reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reply-input {
+  display: block;
+  width: 100%;
+  min-height: 62px;
+  max-height: 180px;
+  resize: vertical;
+  border: 1px solid #e2d8ee;
+  border-radius: 6px;
+  padding: 10px 11px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #3d3057;
+  background: #fefcff;
+}
+.reply-input::placeholder {
+  color: #8f7ca2;
+}
+.reply-input:focus {
+  outline: none;
+}
+.reply-input:focus-visible {
+  outline: 3px solid #a383ec;
+  outline-offset: 0;
+  border-color: #a383ec;
+}
+.reply-input:disabled {
+  background: #f4f0f8;
+  color: #8f7ca2;
+  cursor: default;
+}
+.reply-hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: #8f7ca2;
+}
+.reply-hint-text {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #7a5a92;
+}
+.composer-notice {
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.composer-notice.warning {
+  background: #fff4d6;
+  color: #7a4e00;
+  border: 1px solid #f1dca0;
+}
+.composer-notice.error {
+  background: #fceaf4;
+  color: #a35686;
+  border: 1px solid #f4cfe3;
+}
+.detail-actions .send-button {
+  flex: 1.4;
 }
 .empty-detail {
   display: grid;
@@ -1541,4 +1646,11 @@ body {
 }
 table {
   position: relative;
+}
+
+@media (max-width: 600px) {
+  /* 16px evita o zoom automático do iOS ao tocar no campo de resposta. */
+  .reply-input {
+    font-size: 16px;
+  }
 }
