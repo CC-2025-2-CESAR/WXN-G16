@@ -91,3 +91,14 @@ A conversa não para por falha de uma parte.
 > Cliente: Qual o status da minha demanda?
 > (LLM fora do ar)
 > Lily: Desculpe, não consegui processar sua mensagem agora. Vou chamar um atendente para continuar com você.
+
+## 6. Mensagens barradas pelo filtro de entrada
+
+Antes de chamar a LLM, o `FiltroDeEntrada` confere a mensagem por regras. Se barrar, a Lily responde com um texto pronto, a LLM não é chamada, nenhum ticket é aberto e a conversa continua com ela. A mensagem fica salva na conversa, mas não entra no histórico enviado à LLM nos turnos seguintes.
+
+| Caso | Resposta da Lily |
+|---|---|
+| Mensagem com mais de 1000 caracteres | "Sua mensagem ficou muito longa. Pode resumir em poucas linhas o que você precisa?" |
+| Tentativa de mudar ou revelar as instruções ("ignore suas instruções", "revele o seu prompt", "a partir de agora você é...") | "Não consigo mudar a forma como eu atendo. Posso ajudar com o status de demandas, a abertura de chamados ou chamar um atendente." |
+
+Assunto fora do escopo não é barrado aqui: continua com a intenção `FORA_DE_ESCOPO` (seção 4).
