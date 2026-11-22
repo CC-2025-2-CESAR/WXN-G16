@@ -1,8 +1,10 @@
 package br.com.wxnchatbot.backend.service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
+import br.com.wxnchatbot.backend.chatbot.FiltroDeEntrada;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -49,7 +51,8 @@ public class OrquestradorConversaServico {
 		conversa.adicionarMensagem(conversa.getCliente(), texto);
 		String resposta = null;
 		if (conversa.getStatus() == StatusConversa.COM_CHATBOT) {
-			DecisaoDoTurno decisao = decidir(conversa);
+			Optional<String> barrada = FiltroDeEntrada.barrar(texto);
+			DecisaoDoTurno decisao = barrada.isPresent() ? new Responder(barrada.get()) : decidir(conversa);
 			resposta = textoDe(decisao);
 			conversa.adicionarMensagem(conversa.getChatbot(), resposta);
 			if (decisao instanceof Encaminhar encaminhar) {
@@ -82,6 +85,7 @@ public class OrquestradorConversaServico {
 		List<Mensagem> mensagens = conversa.getMensagens();
 		int inicio = Math.max(0, mensagens.size() - LIMITE_HISTORICO);
 		return mensagens.subList(inicio, mensagens.size()).stream()
+				.filter(m -> m.getTipoRemetente() != TipoRemetente.CLIENTE || FiltroDeEntrada.barrar(m.getConteudo()).isEmpty())
 				.map(m -> new MensagemLlm(papelDe(m.getTipoRemetente()), m.getConteudo()))
 				.toList();
 	}
