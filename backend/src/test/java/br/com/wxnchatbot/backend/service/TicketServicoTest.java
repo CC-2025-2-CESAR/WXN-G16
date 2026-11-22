@@ -4,9 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -25,6 +23,7 @@ import br.com.wxnchatbot.backend.model.NivelUrgencia;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.model.Ticket;
 import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class TicketServicoTest {
@@ -34,11 +33,14 @@ class TicketServicoTest {
     @Mock
     private ConversaRepositorio conversas;
 
+    @Mock
+    private ApplicationEventPublisher eventos;
+
     private TicketServico servico;
 
     @BeforeEach
     void preparar() {
-        servico = new TicketServico(conversas, new ClassificadorUrgencia());
+        servico = new TicketServico(conversas, new ClassificadorUrgencia(), eventos);
     }
 
     private Conversa conversaComMensagens(String... textosDoCliente) {
@@ -109,5 +111,35 @@ class TicketServicoTest {
         assertThrows(RecursoNaoEncontradoException.class, () -> servico.abrir(id, "Pediu atendimento humano"));
 
         verify(conversas, never()).save(any());
+    }
+
+    @Test
+    void abrirPublicaOEventoComOsDadosDoTicket() {
+        Conversa conversa = conversaComMensagens("O sistema caiu");
+
+        Ticket ticket = servico.abrir(conversa.getId(), "Pediu atendimento humano");
+
+        verify(eventos).publishEvent(new TicketAberto(ticket.getId(), conversa.getId(), NivelUrgencia.ALTA,
+                "Pediu atendimento humano", ticket.getAbertoEm()));
+    }
+
+    @Test
+    void conversaInexistenteNaoPublicaEvento() {
+        UUID id = UUID.randomUUID();
+        when(conversas.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(RecursoNaoEncontradoException.class, () -> servico.abrir(id, "Pediu atendimento humano"));
+
+        verifyNoInteractions(eventos);
+    }
+
+    @Test
+    void pedidoRepetidoNaoPublicaUmSegundoEvento() {
+        Conversa conversa = conversaComMensagens("Preciso de ajuda");
+        servico.abrir(conversa.getId(), "Primeiro pedido");
+
+        assertThrows(IllegalStateException.class, () -> servico.abrir(conversa.getId(), "Segundo pedido"));
+
+        verify(eventos, times(1)).publishEvent(any(TicketAberto.class));
     }
 }
