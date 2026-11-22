@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import br.com.wxnchatbot.backend.model.NivelUrgencia;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -58,15 +59,15 @@ class FilaConversasControllerTest {
 	void filaDevolve200ComOsItensNaOrdemDoServico() throws Exception {
 		when(servico.visualizarFila()).thenReturn(List.of(
 				new ConversaNaFila(1, CONVERSA, "Maria Souza", "81999990001", "Quer falar com uma pessoa", ABERTO_EM,
-						OrigemConversa.SIMULADOR),
+						OrigemConversa.SIMULADOR, NivelUrgencia.ALTA),
 				new ConversaNaFila(2, OUTRA_CONVERSA, "Joao Pedro", "81999990002", "Nota fiscal",
-						ABERTO_EM.plusSeconds(60), OrigemConversa.DEMONSTRACAO)));
+						ABERTO_EM.plusSeconds(60), OrigemConversa.DEMONSTRACAO, NivelUrgencia.BAIXA)));
 
 		mvc.perform(get("/api/fila"))
 				.andExpect(status().isOk())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
 				.andExpect(jsonPath("$", hasSize(2)))
-				.andExpect(jsonPath("$[0].*", hasSize(7)))
+				.andExpect(jsonPath("$[0].*", hasSize(8)))
 				.andExpect(jsonPath("$[0].posicao").value(1))
 				.andExpect(jsonPath("$[0].conversaId").value(CONVERSA.toString()))
 				.andExpect(jsonPath("$[0].clienteNome").value("Maria Souza"))
@@ -74,6 +75,7 @@ class FilaConversasControllerTest {
 				.andExpect(jsonPath("$[0].motivo").value("Quer falar com uma pessoa"))
 				.andExpect(jsonPath("$[0].abertoEm").value("2026-10-29T14:00:00Z"))
 				.andExpect(jsonPath("$[0].origem").value("SIMULADOR"))
+				.andExpect(jsonPath("$[0].urgencia").value("ALTA"))
 				.andExpect(jsonPath("$[1].origem").value("DEMONSTRACAO"))
 				.andExpect(jsonPath("$[1].posicao").value(2))
 				.andExpect(jsonPath("$[1].conversaId").value(OUTRA_CONVERSA.toString()));
