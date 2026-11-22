@@ -219,6 +219,8 @@ class FilaConversasApiIntegracaoTest {
 			assertTrue(ticket.getResolvidoEm().isPresent());
 		});
 		mvc.perform(post("/api/conversas/{id}/encerrar", primeiraId)).andExpect(status().isConflict());
+		assumir(primeiraId, outroDisponivelId).andExpect(status().isConflict());
+		assertEquals(StatusConversa.ENCERRADA, lerConversa(primeiraId, Conversa::getStatus));
 		mvc.perform(post("/api/conversas/{id}/encerrar", UUID.randomUUID())).andExpect(status().isNotFound());
 		assertEquals(List.of(segundaId), minhasNaFila().stream().map(ConversaNaFila::conversaId).toList());
 	}
