@@ -68,6 +68,11 @@ do dashboard. A partir daí a Lily não responde mais (`"resposta": null`) e a m
 | Intenção incerta (`INCERTO`, confiança abaixo de 0,7) | "Não tenho certeza de que consigo ajudar com isso, então vou chamar um atendente para você." |
 | Cliente não tem o protocolo | "Sem o protocolo eu não consigo localizar a demanda com segurança. Vou chamar um atendente para buscar pelo seu cadastro." |
 
+Se nenhum atendente estiver disponível no momento do encaminhamento, o ticket é aberto e a conversa entra na fila do
+mesmo jeito, mas a Lily troca a mensagem acima por: "No momento não há atendentes disponíveis. Seu pedido ficou
+registrado na fila e será atendido assim que alguém estiver livre. Nosso horário de atendimento é de segunda a sexta,
+das 8h às 18h." O horário vem da configuração `atendimento.horario` (variável `ATENDIMENTO_HORARIO`).
+
 ## 4. Fora do escopo
 
 A intenção é `FORA_DE_ESCOPO`. A Lily recusa com gentileza e oferece um atendente, sem encaminhar sozinha.
