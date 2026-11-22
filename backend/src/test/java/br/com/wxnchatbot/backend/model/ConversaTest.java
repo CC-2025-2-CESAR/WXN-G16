@@ -152,6 +152,19 @@ class ConversaTest {
 	}
 
 	@Test
+	void assumirConversaJaEncerradaFalhaENaoMudaNada() {
+		Ticket ticket = conversa.solicitarAtendente("Precisa de humano");
+		conversa.encerrar();
+
+		assertThrows(IllegalStateException.class, () -> conversa.atribuirAtendente(atendente));
+
+		assertEquals(StatusConversa.ENCERRADA, conversa.getStatus());
+		assertEquals(StatusTicket.RESOLVIDO, ticket.getStatus());
+		assertTrue(conversa.getAtendente().isEmpty());
+		assertTrue(ticket.getAtendente().isEmpty());
+	}
+
+	@Test
 	void chatbotDesativadoNaoIniciaConversa() {
 		lily.desativar();
 
