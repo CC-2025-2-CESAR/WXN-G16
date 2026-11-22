@@ -5,6 +5,7 @@ import br.com.wxnchatbot.backend.model.NivelUrgencia;
 import br.com.wxnchatbot.backend.model.Ticket;
 import br.com.wxnchatbot.backend.model.TipoRemetente;
 import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
@@ -16,9 +17,11 @@ public class TicketServico {
     private static final int MENSAGENS_NO_RESUMO = 3;
     private final ConversaRepositorio conversaRepositorio;
     private final ClassificadorUrgencia classificador;
-    public TicketServico(ConversaRepositorio conversaRepositorio, ClassificadorUrgencia classificador) {
+    private final ApplicationEventPublisher eventos;
+    public TicketServico(ConversaRepositorio conversaRepositorio, ClassificadorUrgencia classificador, ApplicationEventPublisher eventos) {
         this.conversaRepositorio = conversaRepositorio;
         this.classificador = classificador;
+        this.eventos = eventos;
     }
 
     @Transactional
@@ -35,6 +38,8 @@ public class TicketServico {
 
         Ticket ticket = conversa.solicitarAtendente(motivo, urgencia, resumo);
         conversaRepositorio.save(conversa);
+        eventos.publishEvent(new TicketAberto(ticket.getId(), conversa.getId(), ticket.getUrgencia(),
+                ticket.getMotivo(), ticket.getAbertoEm()));
         return ticket;
     }
 
