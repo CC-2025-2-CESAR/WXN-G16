@@ -302,6 +302,7 @@ Veja `.env.example` (raiz) e `frontend/.env.example`. Resumo:
 | `CHAT_EMPRESA_PADRAO`, `CHAT_EMPRESA_PADRAO_ID` | Backend | empresa de demonstração e o id que o mock da WXN conhece em `dev`; vazios em `prod` |
 | `WHATSAPP_HABILITADO` e as outras `WHATSAPP_*` | Backend | desligado; veja [`docs/whatsapp.md`](docs/whatsapp.md) |
 | `TELEGRAM_HABILITADO`, `TELEGRAM_MODO`, `TELEGRAM_TOKEN_DO_BOT`, `TELEGRAM_SEGREDO_DO_WEBHOOK` | Backend | desligado; `webhook` ou `polling`; o token é segredo. Veja [`docs/telegram.md`](docs/telegram.md) |
+| `TWILIO_HABILITADO`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_NUMERO_DE_ORIGEM`, `TWILIO_URL_DO_WEBHOOK` | Backend | desligado; o Auth Token é segredo; a URL é a do webhook, igual à do console do Twilio. Veja [`docs/twilio-whatsapp.md`](docs/twilio-whatsapp.md) |
 | `VITE_API_URL` | Frontend (`frontend/.env`, se você criar um) | `http://localhost:8080` |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Reservado para etapas futuras | vazio — **não preencher com chave real neste repositório** |
 
@@ -318,6 +319,7 @@ WXN-G16/
 ├── backend/                 Spring Boot (Java 21, Maven)
 │   ├── src/main/java/br/com/wxnchatbot/backend/
 │   │   ├── canal/telegram/  Webhook (ou polling) e envio pela Bot API do Telegram
+│   │   ├── canal/twilio/    Webhook assinado e envio do WhatsApp pelo Twilio (MVP, sem a Meta)
 │   │   ├── canal/whatsapp/  Webhook e envio pela Cloud API da Meta
 │   │   ├── chatbot/         Intenção, roteador, confirmação do chamado e quem escreve as respostas
 │   │   ├── config/          CorsConfig
@@ -358,6 +360,7 @@ WXN-G16/
 │   ├── chatbot-lily.md        Como a Lily decide (intenção, triagem, encaminhamento) e como ligar a LLM
 │   ├── whatsapp.md            Webhook e envio pela Cloud API da Meta: variáveis, configuração e limites
 │   ├── telegram.md            Bot do Telegram: criar, testar na máquina (polling) e ligar no Azure (webhook)
+│   ├── twilio-whatsapp.md     WhatsApp pelo Twilio (sandbox): como funciona, limites, variáveis e passo a passo
 │   ├── ui-fila-atendimento.md  Tela da fila: como subir com dados de demonstração
 │   ├── simulador-chat.md      Simulador de WhatsApp: conversar com a Lily sem a Meta
 │   └── status-e-roadmap.md    Diagnóstico do projeto, riscos, escopo do

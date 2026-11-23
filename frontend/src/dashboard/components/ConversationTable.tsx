@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
   ConversaNaFila,
   EmAtendimento,
+  NivelUrgencia,
   OrigemConversa,
 } from "../../types/fila";
 import { SeloDeOrigem } from "../../components/SeloDeOrigem";
@@ -33,6 +34,11 @@ type Linha = {
   atendente: string | null;
 };
 const PAGE_SIZE = 6;
+const ROTULO_DA_URGENCIA: Record<NivelUrgencia, string> = {
+  ALTA: "urgência alta",
+  MEDIA: "urgência média",
+  BAIXA: "urgência baixa",
+};
 const normalize = (value: string) =>
   value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 function estadoVazio(
@@ -122,7 +128,7 @@ export function ConversationTable({
           origem: c.origem,
           motivo: c.motivo,
           status: "waiting",
-          rotulo: `${c.posicao}º na fila`,
+          rotulo: `${c.posicao}º na fila · ${ROTULO_DA_URGENCIA[c.urgencia]}`,
           tempo: `Aguardando há ${esperaDesde(c.abertoEm, agora)}`,
           atendente: null,
         }))
@@ -161,7 +167,7 @@ export function ConversationTable({
           </h2>
           <p>
             {aba === "fila"
-              ? "Quem pediu atendimento primeiro aparece primeiro."
+              ? "Mais urgentes primeiro; entre iguais, quem pediu antes aparece primeiro."
               : "Conversas que você assumiu desde que abriu esta página."}
           </p>
         </div>

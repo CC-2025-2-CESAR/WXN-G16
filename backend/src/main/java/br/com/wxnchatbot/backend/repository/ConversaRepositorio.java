@@ -20,7 +20,14 @@ public interface ConversaRepositorio extends JpaRepository<Conversa, UUID> {
 			join fetch c.cliente
 			join fetch c.ticket t
 			where c.status = br.com.wxnchatbot.backend.model.StatusConversa.AGUARDANDO_ATENDENTE
-			order by t.abertoEm asc, c.id asc
+			order by
+   				case t.urgencia
+   					when br.com.wxnchatbot.backend.model.NivelUrgencia.ALTA then 0
+   					when br.com.wxnchatbot.backend.model.NivelUrgencia.MEDIA then 1
+   					else 2
+   				end,
+   				t.abertoEm asc,
+   				c.id asc
 			""")
 	List<Conversa> buscarFilaAguardando();
 

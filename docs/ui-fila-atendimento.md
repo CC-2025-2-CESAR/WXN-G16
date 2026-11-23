@@ -47,7 +47,7 @@ fila, então, para repetir a demonstração do zero, recrie o banco.
 
 ## O que a tela faz
 
-- Lista a fila na ordem de chegada (`GET /api/fila`), ao abrir, no botão de
+- Lista a fila (`GET /api/fila`) da mais urgente para a menos urgente (e por ordem de chegada entre iguais), ao abrir, no botão de
   atualizar e a cada 15 segundos.
 - Abre uma conversa e mostra as mensagens trocadas com a Lily
   (`GET /api/fila/{conversaId}`).
@@ -76,7 +76,7 @@ fila, então, para repetir a demonstração do zero, recrie o banco.
   conversa é aberta (`conversa.origem`) e não muda depois; as conversas que já existiam antes da coluna contam como
   demonstração.
 
-As regras vêm do backend: a fila segue a ordem de chegada, só atendente
+As regras vêm do backend: a fila segue a urgência e, entre iguais, a ordem de chegada, só atendente
 disponível assume e, se dois assumem a mesma conversa ao mesmo tempo, um
 consegue e o outro recebe `409`.
 

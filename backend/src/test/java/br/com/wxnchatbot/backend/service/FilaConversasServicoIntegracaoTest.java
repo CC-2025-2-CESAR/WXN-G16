@@ -10,24 +10,16 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import br.com.wxnchatbot.backend.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.wxnchatbot.backend.model.Atendente;
-import br.com.wxnchatbot.backend.model.Chatbot;
-import br.com.wxnchatbot.backend.model.Cliente;
-import br.com.wxnchatbot.backend.model.Conversa;
-import br.com.wxnchatbot.backend.model.StatusConversa;
-import br.com.wxnchatbot.backend.model.StatusTicket;
-import br.com.wxnchatbot.backend.model.Ticket;
-import br.com.wxnchatbot.backend.model.TipoRemetente;
 import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import br.com.wxnchatbot.backend.model.Empresa;
 
 @SpringBootTest
 @Transactional
@@ -38,6 +30,9 @@ class FilaConversasServicoIntegracaoTest {
 
 	@Autowired
 	private ConversaRepositorio conversas;
+
+	@Autowired
+	private TicketServico tickets;
 
 	@PersistenceContext
 	private EntityManager em;
@@ -108,6 +103,35 @@ class FilaConversasServicoIntegracaoTest {
 
 		assertEquals(List.of(primeira.getId(), segunda.getId(), terceira.getId()),
 				filaEntre(primeira, segunda, terceira));
+	}
+
+	@Test
+	void filaColocaOsMaisUrgentesNaFrenteMesmoQueTenhamChegadoDepois() {
+		Conversa duvida = novaConversa("Maria Souza", "81999990001");
+		Conversa lentidao = novaConversa("Joao Pedro", "81999990002");
+		Conversa sistemaParado = novaConversa("Ana Lima", "81999990003");
+
+		tickets.abrir(duvida.getId(), "Quer tirar uma duvida");
+		esperar();
+		tickets.abrir(lentidao.getId(), "O sistema esta lento");
+		esperar();
+		tickets.abrir(sistemaParado.getId(), "O sistema caiu");
+		sincronizar();
+
+		assertEquals(List.of(sistemaParado.getId(), lentidao.getId(), duvida.getId()),
+				filaEntre(duvida, lentidao, sistemaParado));
+	}
+
+	@Test
+	void cadaItemDaFilaTrazAUrgenciaDoTicket() {
+		Conversa conversa = novaConversa("Maria Souza", "81999990001");
+		tickets.abrir(conversa.getId(), "O sistema caiu");
+		sincronizar();
+
+		ConversaNaFila item = servico.visualizarFila().stream()
+				.filter(i -> i.conversaId().equals(conversa.getId())).findFirst().orElseThrow();
+
+		assertEquals(NivelUrgencia.ALTA, item.urgencia());
 	}
 
 	@Test

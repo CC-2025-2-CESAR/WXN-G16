@@ -3,10 +3,7 @@ package br.com.wxnchatbot.backend.service;
 import java.time.Instant;
 import java.util.UUID;
 
-import br.com.wxnchatbot.backend.model.Cliente;
-import br.com.wxnchatbot.backend.model.Conversa;
-import br.com.wxnchatbot.backend.model.OrigemConversa;
-import br.com.wxnchatbot.backend.model.Ticket;
+import br.com.wxnchatbot.backend.model.*;
 
 public record ConversaNaFila(
 		int posicao,
@@ -15,13 +12,14 @@ public record ConversaNaFila(
 		String clienteTelefone,
 		String motivo,
 		Instant abertoEm,
-		OrigemConversa origem) {
+		OrigemConversa origem,
+		NivelUrgencia urgencia){
 
 	static ConversaNaFila de(Conversa conversa, int posicao) {
 		Ticket ticket = conversa.getTicket()
 				.orElseThrow(() -> new IllegalStateException("Conversa na fila sem ticket: " + conversa.getId()));
 		Cliente cliente = conversa.getCliente();
 		return new ConversaNaFila(posicao, conversa.getId(), cliente.getNome(), cliente.getTelefone(),
-				ticket.getMotivo(), ticket.getAbertoEm(), conversa.getOrigem());
+				ticket.getMotivo(), ticket.getAbertoEm(), conversa.getOrigem(), ticket.getUrgencia());
 	}
 }

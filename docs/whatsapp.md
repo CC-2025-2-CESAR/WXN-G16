@@ -7,7 +7,8 @@ recebida, e o backend responde chamando a API de envio da Meta. O código está 
 O que acontece com uma mensagem: webhook assinado → `200` imediato → em segundo plano `ChatServico` (acha o cliente pelo
 telefone e a conversa) → orquestrador → resposta enviada pelo WhatsApp. Veja `docs/chatbot-lily.md` para o miolo.
 
-> **Quer um canal que funciona hoje?** O Telegram não tem essa trava: veja [`telegram.md`](telegram.md).
+> **Quer um canal que funciona hoje?** O Telegram não tem essa trava: veja [`telegram.md`](telegram.md). Para o WhatsApp
+> sem passar pela Meta (MVP), veja o [Twilio](twilio-whatsapp.md).
 >
 > Este documento foi conferido contra a documentação oficial da Meta em 05/11/2026. O que só aparece em fontes de terceiros
 > está marcado como "reportado por terceiros": confirme na tela antes de contar com isso. Em 09/11/2026 uma tentativa real

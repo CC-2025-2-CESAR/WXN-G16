@@ -68,6 +68,12 @@ do dashboard. A partir daí a Lily não responde mais (`"resposta": null`) e a m
 | Intenção incerta (`INCERTO`, confiança abaixo de 0,7) | "Não tenho certeza de que consigo ajudar com isso, então vou chamar um atendente para você." |
 | Cliente não tem o protocolo | "Sem o protocolo eu não consigo localizar a demanda com segurança. Vou chamar um atendente para buscar pelo seu cadastro." |
 
+Se nenhum atendente estiver disponível no momento do encaminhamento, o ticket é aberto e a conversa entra na fila do
+mesmo jeito, mas a Lily troca a mensagem acima por: "No momento não há atendentes disponíveis. Seu pedido ficou
+registrado na fila e será atendido assim que alguém estiver livre. Nosso horário de atendimento é de segunda a sexta,
+das 8h às 18h." O horário vem da configuração `atendimento.horario` (variável `ATENDIMENTO_HORARIO`); se ela vier em branco, vale o
+padrão acima.
+
 ## 4. Fora do escopo
 
 A intenção é `FORA_DE_ESCOPO`. A Lily recusa com gentileza e oferece um atendente, sem encaminhar sozinha.
@@ -91,3 +97,19 @@ A conversa não para por falha de uma parte.
 > Cliente: Qual o status da minha demanda?
 > (LLM fora do ar)
 > Lily: Desculpe, não consegui processar sua mensagem agora. Vou chamar um atendente para continuar com você.
+
+## 6. Mensagens barradas pelo filtro de entrada
+
+Antes de chamar a LLM, o `FiltroDeEntrada` confere a mensagem por regras. Se barrar, a Lily responde com um texto pronto, a LLM não é chamada, nenhum ticket é aberto e a conversa continua com ela. A mensagem fica salva na conversa, mas não entra no histórico enviado à LLM nos turnos seguintes.
+
+| Caso | Resposta da Lily |
+|---|---|
+| Mensagem com mais de 2000 caracteres | "Sua mensagem ficou muito longa. Pode resumir em poucas linhas o que você precisa?" |
+| Tentativa de mudar ou revelar as instruções ("ignore suas instruções", "revele o seu prompt", "a partir de agora você é...") | "Não consigo mudar a forma como eu atendo. Posso ajudar com o status de demandas, a abertura de chamados ou chamar um atendente." |
+
+O filtro só barra pedido **claro** de mudar ou revelar as instruções da Lily ("suas instruções", "as regras anteriores",
+"prompt de sistema"). Pergunta normal de suporte com as mesmas palavras ("me mostre as instruções de configuração",
+"esqueça as regras antigas, quero abrir um chamado") passa. O limite de 2000 caracteres fica abaixo do que a API de chat
+aceita (4000) e do que o Telegram entrega (4096).
+
+Assunto fora do escopo não é barrado aqui: continua com a intenção `FORA_DE_ESCOPO` (seção 4).

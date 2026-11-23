@@ -1,10 +1,14 @@
 package br.com.wxnchatbot.backend.service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
+import br.com.wxnchatbot.backend.chatbot.FiltroDeEntrada;
+import br.com.wxnchatbot.backend.repository.AtendenteRepositorio;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,16 +30,25 @@ public class OrquestradorConversaServico {
 	private static final Logger log = LoggerFactory.getLogger(OrquestradorConversaServico.class);
 	private static final String MENSAGEM_LLM_INDISPONIVEL = "Desculpe, não consegui processar sua mensagem agora. Vou chamar um atendente para continuar com você.";
 	private static final int LIMITE_HISTORICO = 20;
+	/** Vale quando a configuração do horário não existe ou vem em branco (variável de ambiente vazia chega como texto vazio). */
+	static final String HORARIO_PADRAO = "de segunda a sexta, das 8h às 18h";
+	static final String SEM_ATENDENTE_DISPONIVEL = "No momento não há atendentes disponíveis. Seu pedido ficou registrado na fila e será atendido assim que alguém estiver livre. Nosso horário de atendimento é %s.";
 
 	private final ConversaRepositorio conversaRepositorio;
 	private final RoteadorDeIntencao roteador;
 	private final TicketServico ticketServico;
+	private final AtendenteRepositorio atendenteRepositorio;
+	private final String horarioDeAtendimento;
 
 	public OrquestradorConversaServico(ConversaRepositorio conversaRepositorio, RoteadorDeIntencao roteador,
-			TicketServico ticketServico) {
+									   TicketServico ticketServico, AtendenteRepositorio atendenteRepositorio,
+									   @Value("${atendimento.horario}") String horarioDeAtendimento) {
 		this.conversaRepositorio = conversaRepositorio;
 		this.roteador = roteador;
 		this.ticketServico = ticketServico;
+		this.atendenteRepositorio = atendenteRepositorio;
+		this.horarioDeAtendimento = horarioDeAtendimento == null || horarioDeAtendimento.isBlank() ? HORARIO_PADRAO
+				: horarioDeAtendimento.strip();
 	}
 
 	/**
@@ -49,8 +62,12 @@ public class OrquestradorConversaServico {
 		conversa.adicionarMensagem(conversa.getCliente(), texto);
 		String resposta = null;
 		if (conversa.getStatus() == StatusConversa.COM_CHATBOT) {
-			DecisaoDoTurno decisao = decidir(conversa);
+			Optional<String> barrada = FiltroDeEntrada.barrar(texto);
+			DecisaoDoTurno decisao = barrada.isPresent() ? new Responder(barrada.get()) : decidir(conversa);
 			resposta = textoDe(decisao);
+			if (decisao instanceof Encaminhar && !atendenteRepositorio.existsByDisponivelTrue()) {
+				resposta = SEM_ATENDENTE_DISPONIVEL.formatted(horarioDeAtendimento);
+			}
 			conversa.adicionarMensagem(conversa.getChatbot(), resposta);
 			if (decisao instanceof Encaminhar encaminhar) {
 				ticketServico.abrir(conversa.getId(), encaminhar.motivo());
@@ -82,6 +99,7 @@ public class OrquestradorConversaServico {
 		List<Mensagem> mensagens = conversa.getMensagens();
 		int inicio = Math.max(0, mensagens.size() - LIMITE_HISTORICO);
 		return mensagens.subList(inicio, mensagens.size()).stream()
+				.filter(m -> m.getTipoRemetente() != TipoRemetente.CLIENTE || FiltroDeEntrada.barrar(m.getConteudo()).isEmpty())
 				.map(m -> new MensagemLlm(papelDe(m.getTipoRemetente()), m.getConteudo()))
 				.toList();
 	}
