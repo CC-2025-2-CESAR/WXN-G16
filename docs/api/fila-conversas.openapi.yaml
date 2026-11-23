@@ -9,8 +9,10 @@ info:
     ficam no serviço e no modelo, não nos controllers.
 
     ### Ordem da fila
-    Quem pediu atendimento primeiro vem antes (`abertoEm` crescente). A
-    `posicao` começa em 1.
+    Conversas mais urgentes vêm antes (`urgencia` ALTA, depois MEDIA, depois BAIXA);
+    dentro do mesmo nível, quem pediu atendimento primeiro vem antes (`abertoEm`
+    crescente). A `posicao` começa em 1 e segue essa ordem. Uma conversa de
+    urgência baixa pode esperar atrás das mais urgentes.
 
     ### Atribuição concorrente
     Se dois atendentes assumem a mesma conversa ao mesmo tempo, o banco
@@ -247,7 +249,7 @@ components:
   schemas:
     ConversaNaFila:
       type: object
-      required: [posicao, conversaId, clienteNome, clienteTelefone, motivo, abertoEm, origem]
+      required: [posicao, conversaId, clienteNome, clienteTelefone, motivo, abertoEm, origem, urgencia]
       properties:
         posicao:
           type: integer
@@ -273,6 +275,10 @@ components:
           description: Quando o cliente pediu atendimento humano
         origem:
           $ref: '#/components/schemas/OrigemConversa'
+        urgencia:
+          type: string
+          enum: [BAIXA, MEDIA, ALTA]
+          description: Urgência calculada pelo classificador ao abrir o ticket; a fila é ordenada por ela
     DetalheConversaFila:
       type: object
       required: [conversaId, clienteNome, clienteTelefone, motivo, abertoEm, origem, mensagens]

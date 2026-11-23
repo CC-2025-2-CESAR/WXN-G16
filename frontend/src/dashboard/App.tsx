@@ -47,7 +47,10 @@ export default function App() {
   );
   const naFila = fila.itens?.find((c) => c.conversaId === selectedId);
   const aberta = emAtendimento ?? naFila;
-  const maisAntiga = fila.itens?.[0];
+  // A fila vem ordenada por urgência, então o primeiro item não é necessariamente o mais antigo.
+  const maisAntiga = fila.itens?.length
+    ? fila.itens.reduce((a, b) => (Date.parse(b.abertoEm) < Date.parse(a.abertoEm) ? b : a))
+    : undefined;
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
   const notify = useCallback((text: string, erro = false) => {

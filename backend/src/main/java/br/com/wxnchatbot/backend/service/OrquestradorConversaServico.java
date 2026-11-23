@@ -30,6 +30,8 @@ public class OrquestradorConversaServico {
 	private static final Logger log = LoggerFactory.getLogger(OrquestradorConversaServico.class);
 	private static final String MENSAGEM_LLM_INDISPONIVEL = "Desculpe, não consegui processar sua mensagem agora. Vou chamar um atendente para continuar com você.";
 	private static final int LIMITE_HISTORICO = 20;
+	/** Vale quando a configuração do horário não existe ou vem em branco (variável de ambiente vazia chega como texto vazio). */
+	static final String HORARIO_PADRAO = "de segunda a sexta, das 8h às 18h";
 	static final String SEM_ATENDENTE_DISPONIVEL = "No momento não há atendentes disponíveis. Seu pedido ficou registrado na fila e será atendido assim que alguém estiver livre. Nosso horário de atendimento é %s.";
 
 	private final ConversaRepositorio conversaRepositorio;
@@ -45,7 +47,8 @@ public class OrquestradorConversaServico {
 		this.roteador = roteador;
 		this.ticketServico = ticketServico;
 		this.atendenteRepositorio = atendenteRepositorio;
-		this.horarioDeAtendimento = horarioDeAtendimento;
+		this.horarioDeAtendimento = horarioDeAtendimento == null || horarioDeAtendimento.isBlank() ? HORARIO_PADRAO
+				: horarioDeAtendimento.strip();
 	}
 
 	/**
