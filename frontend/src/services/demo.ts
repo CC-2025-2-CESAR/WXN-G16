@@ -1,4 +1,4 @@
-import type { Atendente, ConversaNaFila, DetalheConversaFila, MensagemResumo, TipoRemetente } from '../types/fila';
+import type { Atendente, ConversaNaFila, DetalheConversaFila, MensagemResumo, NivelUrgencia, TipoRemetente } from '../types/fila';
 
 type Fala = [TipoRemetente, string];
 type Cenario = {
@@ -96,16 +96,35 @@ const assumidas = new Set<string>();
 const respostas = new Map<string, MensagemResumo[]>();
 const abertoEm = (cenario: Cenario) => new Date(criadoEm - cenario.minutosAtras * 60_000).toISOString();
 
+const ORDEM_DA_URGENCIA: Record<NivelUrgencia, number> = { ALTA: 0, MEDIA: 1, BAIXA: 2 };
+
+// Só para a demonstração: o backend calcula a urgência de verdade ao abrir o ticket.
+const urgenciaDoCenario = (cenario: Cenario): NivelUrgencia =>
+  /trava|bloquead|parou|urgente/i.test(cenario.motivo)
+    ? 'ALTA'
+    : /cancelar|andamento|planilha/i.test(cenario.motivo)
+      ? 'BAIXA'
+      : 'MEDIA';
+
+/** Como o backend: mais urgentes primeiro e, entre iguais, quem pediu antes. */
 export function listarDemoFila(): ConversaNaFila[] {
-  return cenarios.filter((cenario) => aguardando.has(cenario.id)).map((cenario, index) => ({
-    posicao: index + 1,
-    conversaId: cenario.id,
-    clienteNome: cenario.nome,
-    clienteTelefone: cenario.telefone,
-    motivo: cenario.motivo,
-    abertoEm: abertoEm(cenario),
-    origem: 'DEMONSTRACAO',
-  }));
+  return cenarios
+    .filter((cenario) => aguardando.has(cenario.id))
+    .map((cenario) => ({ cenario, urgencia: urgenciaDoCenario(cenario) }))
+    .sort(
+      (a, b) =>
+        ORDEM_DA_URGENCIA[a.urgencia] - ORDEM_DA_URGENCIA[b.urgencia] || b.cenario.minutosAtras - a.cenario.minutosAtras,
+    )
+    .map(({ cenario, urgencia }, index) => ({
+      posicao: index + 1,
+      conversaId: cenario.id,
+      clienteNome: cenario.nome,
+      clienteTelefone: cenario.telefone,
+      motivo: cenario.motivo,
+      abertoEm: abertoEm(cenario),
+      origem: 'DEMONSTRACAO',
+      urgencia,
+    }));
 }
 
 function mensagensDoCenario(cenario: Cenario): MensagemResumo[] {

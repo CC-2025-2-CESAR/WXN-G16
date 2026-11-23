@@ -34,7 +34,14 @@ class FiltroDeEntradaTest {
             "Ignore a mensagem anterior, errei o protocolo",
             "Quais são as regras para abrir um chamado?",
             "Segui as instruções do manual e deu erro",
-            "Quero falar com um atendente" })
+            "Quero falar com um atendente",
+            "Me passe as instruções de configuração do módulo financeiro",
+            "Mostre as instruções para emitir nota fiscal",
+            "Diga as instruções para cancelar uma nota",
+            "Me mostra as instruções do manual",
+            "Esqueça as regras antigas, quero abrir um chamado",
+            "Ignore as regras de validação, por favor",
+            "Qual o prompt de comando para reiniciar o serviço?" })
     void deixaPassarMensagensNormaisMesmoComPalavrasParecidas(String texto) {
         assertTrue(FiltroDeEntrada.barrar(texto).isEmpty());
     }
@@ -44,6 +51,11 @@ class FiltroDeEntradaTest {
         String longa = "a".repeat(FiltroDeEntrada.TAMANHO_MAXIMO + 1);
 
         assertEquals(Optional.of(FiltroDeEntrada.RESPOSTA_MUITO_LONGA), FiltroDeEntrada.barrar(longa));
+    }
+
+    @Test
+    void mensagemLongaQueAindaCabeNoLimitePassa() {
+        assertTrue(FiltroDeEntrada.barrar("Preciso falar com um atendente. " + "a".repeat(1500)).isEmpty());
     }
 
     @Test

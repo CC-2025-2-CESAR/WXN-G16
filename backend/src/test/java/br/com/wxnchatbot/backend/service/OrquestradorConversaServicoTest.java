@@ -73,11 +73,12 @@ class OrquestradorConversaServicoTest {
 	private ArgumentCaptor<List<MensagemLlm>> historico;
 
 	private OrquestradorConversaServico orquestrador;
+	private RoteadorDeIntencao roteador;
 
 	@BeforeEach
 	void preparar() {
 		ExtratorDeProtocolo extrator = new ExtratorDeProtocolo();
-		RoteadorDeIntencao roteador = new RoteadorDeIntencao(new ClassificadorPorRegras(extrator), extrator,
+		roteador = new RoteadorDeIntencao(new ClassificadorPorRegras(extrator), extrator,
 				new InterpretadorDeConfirmacao(), consultaDemanda, solicitacaoChamado, confirmacaoChamado, llm,
 				new BaseDeConhecimento(""), 0.7);
 		orquestrador = new OrquestradorConversaServico(conversas, roteador, tickets, atendentes, HORARIO);
@@ -243,6 +244,20 @@ class OrquestradorConversaServicoTest {
 				resultado.resposta());
 		assertEquals(resultado.resposta(), conversa.getMensagens().get(1).getConteudo());
 		verify(tickets).abrir(conversa.getId(), "O cliente pediu para falar com um atendente");
+	}
+
+	@Test
+	void horarioEmBrancoNaConfiguracaoUsaOPadraoEmVezDeFicarVazio() {
+		OrquestradorConversaServico semHorario = new OrquestradorConversaServico(conversas, roteador, tickets, atendentes, "  ");
+		Conversa conversa = conversaComChatbot();
+		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
+		when(tickets.abrir(eq(conversa.getId()), any())).thenAnswer(chamada -> conversa.solicitarAtendente(chamada.getArgument(1)));
+		when(atendentes.existsByDisponivelTrue()).thenReturn(false);
+
+		ResultadoTurno resultado = semHorario.processarTurno(conversa.getId(), "Quero falar com um atendente");
+
+		assertTrue(resultado.resposta().contains(HORARIO));
+		assertFalse(resultado.resposta().contains("é ."));
 	}
 
 	@Test
