@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.wxnchatbot.backend.model.Atendente;
@@ -65,6 +66,21 @@ public class FilaConversasServico {
 	public void encerrar(UUID conversaId) {
 		Conversa conversa = conversaRepositorio.buscarPorIdParaAtualizar(conversaId)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Conversa", conversaId));
+		conversa.encerrar();
+		conversaRepositorio.save(conversa);
+	}
+
+	@Transactional
+	public void encerrarComoAtendente(UUID conversaId, UUID atendenteId) {
+		Conversa conversa = conversaRepositorio.buscarPorIdParaAtualizar(conversaId)
+				.orElseThrow(() -> new RecursoNaoEncontradoException("Conversa", conversaId));
+		if (conversa.getStatus() != StatusConversa.COM_ATENDENTE) {
+			throw new IllegalStateException("A conversa não está em atendimento");
+		}
+		if (conversa.getAtendente().isEmpty()
+				|| !conversa.getAtendente().orElseThrow().getId().equals(atendenteId)) {
+			throw new AccessDeniedException("Esta conversa pertence a outro atendente.");
+		}
 		conversa.encerrar();
 		conversaRepositorio.save(conversa);
 	}

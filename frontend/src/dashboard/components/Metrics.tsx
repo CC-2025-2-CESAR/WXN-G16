@@ -36,7 +36,7 @@ export function Metrics({ fila, minhas, agora }: Props) {
     {
       titulo: "Em atendimento por você",
       valor: String(minhas),
-      nota: "nesta sessão",
+      nota: "conversas ativas",
       icone: "users",
     },
   ];

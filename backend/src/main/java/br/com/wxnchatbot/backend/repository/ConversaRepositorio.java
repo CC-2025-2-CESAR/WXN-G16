@@ -31,6 +31,18 @@ public interface ConversaRepositorio extends JpaRepository<Conversa, UUID> {
 			""")
 	List<Conversa> buscarFilaAguardando();
 
+	/** Conversas assumidas pelo atendente, com cliente, ticket e responsável para retomar o painel. */
+	@Query("""
+			select c from Conversa c
+			join fetch c.cliente
+			join fetch c.ticket
+			join fetch c.atendente
+			where c.status = br.com.wxnchatbot.backend.model.StatusConversa.COM_ATENDENTE
+			and c.atendente.id = :atendenteId
+			order by case when c.assumidaEm is null then 1 else 0 end, c.assumidaEm desc, c.id
+			""")
+	List<Conversa> buscarAtendimentosAtivos(@Param("atendenteId") UUID atendenteId);
+
 	/** A conversa mais recente do cliente que ainda não foi encerrada (a que continua quando ele escreve de novo). */
 	Optional<Conversa> findFirstByClienteIdAndStatusNotOrderByIniciadaEmDesc(UUID clienteId, StatusConversa status);
 

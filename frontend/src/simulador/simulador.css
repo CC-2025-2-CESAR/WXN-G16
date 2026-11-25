@@ -537,3 +537,33 @@
     opacity: 0.7;
   }
 }
+
+.sim-acesso-real {
+  max-width: 720px;
+  margin: 10vh auto 0;
+  padding: clamp(30px, 6vw, 60px);
+  border: 1px solid #dce6f1;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 60px #0b2b4a12;
+}
+.sim-acesso-real-marca {
+  color: #0049ff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+}
+.sim-acesso-real h2 {
+  margin: 20px 0 10px;
+  font-family: Manrope, sans-serif;
+  font-size: clamp(26px, 4vw, 38px);
+  line-height: 1.2;
+  letter-spacing: -1px;
+}
+.sim-acesso-real p {
+  max-width: 540px;
+  margin-bottom: 26px;
+  color: #5b6b7d;
+  line-height: 1.65;
+}
+.sim-acesso-real .sim-botao { display: inline-flex; width: auto; text-decoration: none; }

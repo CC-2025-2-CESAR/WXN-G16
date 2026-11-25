@@ -62,6 +62,9 @@ public class Conversa {
 	@Column(name = "encerrada_em")
 	private Instant encerradaEm;
 
+	@Column(name = "assumida_em")
+	private Instant assumidaEm;
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "origem", nullable = false)
 	private OrigemConversa origem = OrigemConversa.DEMONSTRACAO;
@@ -123,6 +126,7 @@ public class Conversa {
 		}
 		this.atendente = atendente;
 		this.status = StatusConversa.COM_ATENDENTE;
+		this.assumidaEm = Instant.now();
 		ticket.iniciarAtendimento(atendente);
 	}
 
@@ -191,6 +195,10 @@ public class Conversa {
 
 	public Optional<Instant> getEncerradaEm() {
 		return Optional.ofNullable(encerradaEm);
+	}
+
+	public Optional<Instant> getAssumidaEm() {
+		return Optional.ofNullable(assumidaEm);
 	}
 	
 	public Empresa getEmpresa() {

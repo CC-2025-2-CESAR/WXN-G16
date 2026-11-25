@@ -23,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.security.access.AccessDeniedException;
 
 import br.com.wxnchatbot.backend.model.Atendente;
 import br.com.wxnchatbot.backend.model.Chatbot;
@@ -100,6 +101,21 @@ class AtendimentoServicoTest {
 		assertEquals(TipoRemetente.ATENDENTE, ultima(conversa).getTipoRemetente());
 		verify(conversas).save(conversa);
 		verify(telegram).entregar("tg:1111111", "Oi, sou o Carlos. Como posso ajudar?");
+	}
+
+	@Test
+	void outroAtendenteNaoPodeResponderNemLerOHistoricoDoResponsavel() {
+		Conversa conversa = emAtendimento(OrigemConversa.TELEGRAM, "tg:1111111");
+		achar(conversa);
+		when(conversas.findById(conversa.getId())).thenReturn(Optional.of(conversa));
+		UUID outroAtendente = UUID.randomUUID();
+
+		assertThrows(AccessDeniedException.class,
+				() -> servico.enviarMensagem(conversa.getId(), "Mensagem indevida", outroAtendente));
+		assertThrows(AccessDeniedException.class,
+				() -> servico.listarMensagens(conversa.getId(), outroAtendente));
+		verify(conversas, never()).save(any());
+		verify(telegram, never()).entregar(any(), any());
 	}
 
 	@Test

@@ -6,7 +6,7 @@ import br.com.wxnchatbot.backend.model.Atendente;
 
 public record AtendenteResumo(UUID id, String nome, String email, boolean disponivel) {
 
-	static AtendenteResumo de(Atendente atendente) {
+	public static AtendenteResumo de(Atendente atendente) {
 		return new AtendenteResumo(atendente.getId(), atendente.getNome(), atendente.getEmail(),
 				atendente.isDisponivel());
 	}

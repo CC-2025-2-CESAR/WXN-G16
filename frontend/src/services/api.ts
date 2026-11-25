@@ -1,10 +1,11 @@
-import type { Atendente, ConversaNaFila, DetalheConversaFila, MensagemResumo, RespostaDoAtendente } from '../types/fila';
+import type { Atendente, ConversaNaFila, DetalheConversaFila, EmAtendimento, MensagemResumo, RespostaDoAtendente } from '../types/fila';
 import type { HealthResponse } from '../types/health';
 import {
   abrirDemoConversa,
   assumirDemoConversa,
   encerrarDemoConversa,
   enviarDemoMensagem,
+  listarDemoAtendimentosAtivos,
   listarDemoAtendentes,
   listarDemoFila,
   listarDemoMensagensDoAtendimento,
@@ -24,6 +25,8 @@ export class ErroApi extends Error {
 
 const TEMPO_LIMITE_MS = 10_000;
 const MENSAGEM_TEMPO_ESGOTADO = 'O servidor demorou demais para responder.';
+let tokenCsrf: string | null = null;
+let buscaToken: Promise<string> | null = null;
 
 export function mensagemDoErro(erro: unknown) {
   if (erro instanceof ErroApi) return erro.message;
@@ -38,18 +41,70 @@ async function detalheDoProblema(resposta: Response) {
     : `O servidor respondeu com o erro ${resposta.status}.`;
 }
 
+export async function obterTokenCsrf(): Promise<string> {
+  if (tokenCsrf) return tokenCsrf;
+  if (!buscaToken) {
+    buscaToken = fetch(`${API_URL}/api/auth/csrf`, { credentials: 'include' })
+      .then(async (resposta) => {
+        if (!resposta.ok) throw new ErroApi(await detalheDoProblema(resposta), resposta.status);
+        const dados: { token?: unknown } = await resposta.json();
+        if (typeof dados.token !== 'string' || !dados.token) throw new ErroApi('Não foi possível iniciar a sessão segura.', 0);
+        tokenCsrf = dados.token;
+        return tokenCsrf;
+      })
+      .finally(() => { buscaToken = null; });
+  }
+  return buscaToken;
+}
+
 async function requisitar(caminho: string, init?: RequestInit) {
   const limite = AbortSignal.timeout(TEMPO_LIMITE_MS);
   const signal = init?.signal ? AbortSignal.any([init.signal, limite]) : limite;
-  const resposta = await fetch(`${API_URL}${caminho}`, { ...init, signal }).catch(() => {
+  const metodo = (init?.method ?? 'GET').toUpperCase();
+  const headers = new Headers(init?.headers);
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(metodo)) headers.set('X-XSRF-TOKEN', await obterTokenCsrf());
+  const resposta = await fetch(`${API_URL}${caminho}`, { ...init, credentials: 'include', headers, signal }).catch(() => {
     throw new ErroApi(limite.aborted ? MENSAGEM_TEMPO_ESGOTADO : 'Não foi possível falar com o servidor.', 0);
   });
 
   if (!resposta.ok) {
+    if (resposta.status === 401 && caminho !== '/api/auth/me' && caminho !== '/api/auth/login') {
+      window.dispatchEvent(new Event('wxn:session-expired'));
+    }
     throw new ErroApi(await detalheDoProblema(resposta), resposta.status);
   }
 
   return resposta;
+}
+
+export async function sessaoAtual(): Promise<Atendente> {
+  const resposta = await requisitar('/api/auth/me');
+  return resposta.json();
+}
+
+export async function entrar(email: string, senha: string): Promise<Atendente> {
+  const resposta = await requisitar('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, senha }),
+  });
+  tokenCsrf = null;
+  return resposta.json();
+}
+
+export async function sair(): Promise<void> {
+  await requisitar('/api/auth/logout', { method: 'POST' });
+  tokenCsrf = null;
+}
+
+export async function listarAtendimentosAtivos(atendenteId: string, signal?: AbortSignal): Promise<EmAtendimento[]> {
+  if (DEMO_ATIVO) {
+    signal?.throwIfAborted();
+    return listarDemoAtendimentosAtivos(atendenteId);
+  }
+  const resposta = await requisitar('/api/atendimentos/ativos', { signal });
+  const dados: Array<Omit<EmAtendimento, 'assumidaEm'> & { assumidaEm: string | null }> = await resposta.json();
+  return dados.map((item) => ({ ...item, assumidaEm: item.assumidaEm ? Date.parse(item.assumidaEm) : null }));
 }
 
 export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
@@ -91,8 +146,6 @@ export async function assumirConversa(conversaId: string, atendenteId: string) {
   }
   await requisitar(`/api/fila/${conversaId}/assumir`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ atendenteId }),
   });
 }
 
@@ -125,7 +178,7 @@ export async function enviarMensagemDoAtendente(conversaId: string, texto: strin
     return {
       mensagem: resultado,
       entregue: false,
-      aviso: 'Modo demonstração: a mensagem não sai para nenhum aplicativo.',
+      aviso: null,
     };
   }
   const resposta = await requisitar(`/api/conversas/${conversaId}/atendimento/mensagens`, {

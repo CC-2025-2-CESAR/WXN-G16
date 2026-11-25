@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { StatusBadge } from '../components/StatusBadge';
 import { useBackendHealth } from '../hooks/useBackendHealth';
+import { DEMO_ATIVO } from '../services/api';
 import { gravarArmazenado, lerArmazenado } from './armazenamento';
 import { Celular } from './Celular';
 import type { Cliente, StatusConversa } from './tipos';
@@ -168,6 +169,24 @@ export default function SimuladorApp() {
       document.title = anterior;
     };
   }, []);
+
+  if (DEMO_ATIVO) return (
+    <div className="sim-pagina">
+      <header className="sim-cabecalho">
+        <div>
+          <a className="sim-voltar" href="#/">← Fila de atendimento</a>
+          <h1>Simulador de WhatsApp</h1>
+          <p>A Lily recebe mensagens pelo servidor da WXN.</p>
+        </div>
+      </header>
+      <section className="sim-acesso-real">
+        <span className="sim-acesso-real-marca">WXN · ACESSO DA EQUIPE</span>
+        <h2>Para conversar com a Lily, conecte a central ao servidor.</h2>
+        <p>O simulador precisa da API da WXN e de uma sessão de funcionário ativa.</p>
+        <a className="sim-botao" href={window.location.pathname}>Abrir acesso da equipe</a>
+      </section>
+    </div>
+  );
 
   return (
     <div className="sim-pagina">

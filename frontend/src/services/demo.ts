@@ -1,4 +1,4 @@
-import type { Atendente, ConversaNaFila, DetalheConversaFila, MensagemResumo, NivelUrgencia, TipoRemetente } from '../types/fila';
+import type { Atendente, ConversaNaFila, DetalheConversaFila, EmAtendimento, MensagemResumo, NivelUrgencia, TipoRemetente } from '../types/fila';
 
 type Fala = [TipoRemetente, string];
 type Cenario = {
@@ -89,11 +89,41 @@ const atendentes: Atendente[] = [
   { id: 'demo-paulo', nome: 'Paulo Mendes', email: 'paulo.mendes@demo.wxn.example', disponivel: true },
   { id: 'demo-carla', nome: 'Carla Nogueira', email: 'carla.nogueira@demo.wxn.example', disponivel: false },
 ];
-const criadoEm = Date.now();
-const aguardando = new Set(cenarios.map((cenario) => cenario.id));
-const assumidas = new Set<string>();
-// Respostas dos atendentes enviadas nesta página, por conversa (só existem na memória).
-const respostas = new Map<string, MensagemResumo[]>();
+type VinculoDemo = { atendenteId: string; assumidaEm: number };
+type EstadoDemo = { criadoEm: number; assumidas: Record<string, VinculoDemo>; respostas: Record<string, MensagemResumo[]> };
+const CHAVE_DEMO = 'wxn-demo-conversas';
+function lerEstado(): EstadoDemo | null {
+  try {
+    const bruto = sessionStorage.getItem(CHAVE_DEMO);
+    return bruto ? JSON.parse(bruto) as EstadoDemo : null;
+  } catch {
+    return null;
+  }
+}
+const estado = lerEstado();
+const criadoEm = typeof estado?.criadoEm === 'number' ? estado.criadoEm : Date.now();
+const assumidas = new Map<string, VinculoDemo>(
+  Object.entries(estado?.assumidas ?? {}).filter(([id, vinculo]) =>
+    cenarios.some((c) => c.id === id) &&
+    atendentes.some((a) => a.id === vinculo?.atendenteId) &&
+    typeof vinculo?.assumidaEm === 'number',
+  ),
+);
+const aguardando = new Set(cenarios.map((cenario) => cenario.id).filter((id) => !assumidas.has(id)));
+const respostas = new Map<string, MensagemResumo[]>(
+  Object.entries(estado?.respostas ?? {}).filter(([id, mensagens]) => assumidas.has(id) && Array.isArray(mensagens)),
+);
+function salvarEstado() {
+  try {
+    sessionStorage.setItem(CHAVE_DEMO, JSON.stringify({
+      criadoEm,
+      assumidas: Object.fromEntries(assumidas),
+      respostas: Object.fromEntries(respostas),
+    } satisfies EstadoDemo));
+  } catch {
+    // A demonstração continua nesta página se o armazenamento estiver indisponível.
+  }
+}
 const abertoEm = (cenario: Cenario) => new Date(criadoEm - cenario.minutosAtras * 60_000).toISOString();
 
 const ORDEM_DA_URGENCIA: Record<NivelUrgencia, number> = { ALTA: 0, MEDIA: 1, BAIXA: 2 };
@@ -140,9 +170,7 @@ function mensagensDoCenario(cenario: Cenario): MensagemResumo[] {
   }));
 }
 
-export function abrirDemoConversa(id: string): DetalheConversaFila | null {
-  const cenario = cenarios.find((item) => item.id === id && aguardando.has(item.id));
-  if (!cenario) return null;
+function detalheDoCenario(cenario: Cenario): DetalheConversaFila {
   const mensagens = mensagensDoCenario(cenario);
   return {
     conversaId: cenario.id,
@@ -155,8 +183,25 @@ export function abrirDemoConversa(id: string): DetalheConversaFila | null {
   };
 }
 
+export function abrirDemoConversa(id: string): DetalheConversaFila | null {
+  const cenario = cenarios.find((item) => item.id === id && aguardando.has(item.id));
+  return cenario ? detalheDoCenario(cenario) : null;
+}
+
 export function listarDemoAtendentes(): Atendente[] {
   return atendentes.map((atendente) => ({ ...atendente }));
+}
+
+export function listarDemoAtendimentosAtivos(atendenteId: string): EmAtendimento[] {
+  const atendente = atendentes.find((item) => item.id === atendenteId);
+  if (!atendente) return [];
+  return cenarios.flatMap((cenario) => {
+    const vinculo = assumidas.get(cenario.id);
+    if (!vinculo || vinculo.atendenteId !== atendenteId) return [];
+    const detalhe = detalheDoCenario(cenario);
+    detalhe.mensagens.push(...(respostas.get(cenario.id) ?? []));
+    return [{ detalhe, atendente: { ...atendente }, assumidaEm: vinculo.assumidaEm }];
+  }).sort((a, b) => (b.assumidaEm ?? 0) - (a.assumidaEm ?? 0));
 }
 
 export function assumirDemoConversa(conversaId: string, atendenteId: string): 'ok' | 'conversa-ausente' | 'atendente-ausente' | 'atendente-indisponivel' {
@@ -165,7 +210,8 @@ export function assumirDemoConversa(conversaId: string, atendenteId: string): 'o
   if (!atendente) return 'atendente-ausente';
   if (!atendente.disponivel) return 'atendente-indisponivel';
   aguardando.delete(conversaId);
-  assumidas.add(conversaId);
+  assumidas.set(conversaId, { atendenteId, assumidaEm: Date.now() });
+  salvarEstado();
   return 'ok';
 }
 
@@ -173,6 +219,7 @@ export function encerrarDemoConversa(conversaId: string): boolean {
   if (!assumidas.has(conversaId)) return false;
   assumidas.delete(conversaId);
   respostas.delete(conversaId);
+  salvarEstado();
   return true;
 }
 
@@ -189,5 +236,6 @@ export function enviarDemoMensagem(conversaId: string, texto: string): MensagemR
   if (!conteudo || conteudo.length > 4000) return 'texto-invalido';
   const mensagem: MensagemResumo = { tipoRemetente: 'ATENDENTE', conteudo, enviadaEm: new Date().toISOString() };
   respostas.set(conversaId, [...(respostas.get(conversaId) ?? []), mensagem]);
+  salvarEstado();
   return { ...mensagem };
 }

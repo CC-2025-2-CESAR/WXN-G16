@@ -1,4 +1,4 @@
-import { API_URL, ErroApi } from '../services/api';
+import { API_URL, ErroApi, obterTokenCsrf } from '../services/api';
 import type { RespostaChat, StatusConversa } from './tipos';
 
 // A resposta passa pela Lily (e, em produção, pelo Gemini) e o servidor gratuito do Azure leva uns 30 s para acordar,
@@ -50,9 +50,11 @@ function lerResposta(dados: unknown): RespostaChat {
 export async function enviarParaLily(entrada: Entrada, signal?: AbortSignal): Promise<RespostaChat> {
   const limite = AbortSignal.timeout(TEMPO_LIMITE_MS);
   const sinal = signal ? AbortSignal.any([signal, limite]) : limite;
+  const csrf = await obterTokenCsrf();
   const resposta = await fetch(`${API_URL}/api/chat/mensagens`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrf },
     body: JSON.stringify({
       telefone: entrada.telefone,
       nome: entrada.nome || undefined,

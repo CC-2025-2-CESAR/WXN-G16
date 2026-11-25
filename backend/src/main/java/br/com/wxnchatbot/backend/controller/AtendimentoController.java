@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import br.com.wxnchatbot.backend.service.AtendimentoServico;
+import br.com.wxnchatbot.backend.autenticacao.AtendenteAutenticado;
 import br.com.wxnchatbot.backend.service.DetalheConversaFila.MensagemResumo;
 import br.com.wxnchatbot.backend.service.ResultadoDoEnvio;
 import jakarta.validation.Valid;
@@ -21,20 +22,22 @@ import jakarta.validation.Valid;
 public class AtendimentoController {
 
 	private final AtendimentoServico servico;
+	private final AtendenteAutenticado atendenteAutenticado;
 
-	public AtendimentoController(AtendimentoServico servico) {
+	public AtendimentoController(AtendimentoServico servico, AtendenteAutenticado atendenteAutenticado) {
 		this.servico = servico;
+		this.atendenteAutenticado = atendenteAutenticado;
 	}
 
 	/** Todas as mensagens da conversa, da mais antiga para a mais nova. O dashboard consulta isto a cada poucos segundos. */
 	@GetMapping
 	public List<MensagemResumo> listar(@PathVariable UUID conversaId) {
-		return servico.listarMensagens(conversaId);
+		return servico.listarMensagens(conversaId, atendenteAutenticado.id());
 	}
 
 	/** Resposta do atendente que assumiu a conversa. 409 se a conversa não está em atendimento. */
 	@PostMapping
 	public ResultadoDoEnvio enviar(@PathVariable UUID conversaId, @Valid @RequestBody TextoRequisicao requisicao) {
-		return servico.enviarMensagem(conversaId, requisicao.texto());
+		return servico.enviarMensagem(conversaId, requisicao.texto(), atendenteAutenticado.id());
 	}
 }

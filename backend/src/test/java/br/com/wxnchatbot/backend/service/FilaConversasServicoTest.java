@@ -16,6 +16,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.access.AccessDeniedException;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -344,5 +345,22 @@ class FilaConversasServicoTest {
 				() -> servico.encerrar(id));
 
 		assertTrue(erro.getMessage().contains("Conversa"));
+	}
+
+	@Test
+	void somenteOAtendenteResponsavelPodeEncerrarPeloPainel() {
+		Conversa conversa = conversaNaFila("Maria Souza", "81999990001", "Quer falar com uma pessoa");
+		Atendente responsavel = atendente();
+		conversa.atribuirAtendente(responsavel);
+		when(conversas.buscarPorIdParaAtualizar(conversa.getId())).thenReturn(Optional.of(conversa));
+
+		assertThrows(AccessDeniedException.class,
+				() -> servico.encerrarComoAtendente(conversa.getId(), UUID.randomUUID()));
+		assertEquals(StatusConversa.COM_ATENDENTE, conversa.getStatus());
+		verify(conversas, never()).save(any());
+
+		servico.encerrarComoAtendente(conversa.getId(), responsavel.getId());
+		assertEquals(StatusConversa.ENCERRADA, conversa.getStatus());
+		verify(conversas).save(conversa);
 	}
 }
