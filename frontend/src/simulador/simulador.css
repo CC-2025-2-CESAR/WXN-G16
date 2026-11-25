@@ -7,12 +7,11 @@
   --wa-barra: #f0f2f5;
   --wa-texto: #111b21;
   --wa-suave: #54656f;
-  /* O cinza do dashboard fica abaixo de 4,5:1 sobre o fundo lavanda; aqui o texto de apoio precisa ser mais escuro. */
-  --muted: #6b5f7a;
+  --muted: #5b6b7d;
   min-height: 100dvh;
   padding: 28px 20px 48px;
-  background: #f8f6fd;
-  color: #302746;
+  background: #f5f8fc;
+  color: #142337;
 }
 
 .sim-cabecalho,
@@ -75,7 +74,7 @@
 .sim-cliente input {
   height: 38px;
   padding: 0 12px;
-  border: 1px solid #d9d0e8;
+  border: 1px solid #d5e0ee;
   border-radius: 10px;
   background: #fff;
   color: inherit;
@@ -102,16 +101,16 @@
 }
 
 .sim-botao:hover:not(:disabled) {
-  background: #6040cc;
+  background: #0039c7;
 }
 
 .sim-botao--suave {
-  background: #efe9fb;
-  color: #4a33a8;
+  background: #eaf1ff;
+  color: #1749a5;
 }
 
 .sim-botao--suave:hover:not(:disabled) {
-  background: #e3d9f8;
+  background: #dce8ff;
 }
 
 /* Grade: celular à esquerda e apoio ao teste à direita, na mesma ordem do HTML (e do foco por teclado) */
@@ -167,12 +166,12 @@
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #faf8fe;
+  background: #f8fbff;
   text-align: left;
 }
 
 .sim-exemplos button:hover:not(:disabled) {
-  background: #efe9fb;
+  background: #eaf1ff;
 }
 
 .sim-estado {
@@ -189,8 +188,8 @@
   display: inline-block;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #ece9f3;
-  color: #4b4260;
+  background: #eaf1ff;
+  color: #27435f;
   font-weight: 650;
 }
 
@@ -218,7 +217,7 @@
   height: min(720px, calc(100dvh - 48px));
   min-height: 480px;
   overflow: hidden;
-  border: 9px solid #2a2140;
+  border: 9px solid #071521;
   border-radius: 38px;
   background: var(--wa-fundo);
   box-shadow: 0 24px 48px rgba(48, 39, 70, 0.22);
@@ -243,7 +242,7 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #a383ec, #7151df);
+  background: linear-gradient(135deg, #4f80ff, #0049ff);
   font: 800 17px "Manrope", sans-serif;
 }
 
@@ -496,7 +495,7 @@
 }
 
 .sim-conversa:focus-visible {
-  outline: 3px solid #a383ec;
+  outline: 3px solid #4f80ff;
   outline-offset: -3px;
 }
 
