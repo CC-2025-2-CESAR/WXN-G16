@@ -32,8 +32,10 @@ enviada a um cliente real. A sessão e os atendimentos de exemplo ficam no
 API real em `VITE_API_URL`. A tela não permite escolher a identidade de outro
 funcionário.
 
-O simulador de WhatsApp conversa com a API do backend e requer uma sessão real;
-o modo de demonstração local cobre o fluxo de fila e atendimento do dashboard.
+No modo `?demo=1`, o simulador de WhatsApp responde com mensagens locais e
+permite encaminhar uma conversa nova para a fila da prévia. Essas respostas não
+usam a Lily real nem chegam ao WhatsApp. Sem `?demo=1`, o simulador conversa
+com a API do backend e requer uma sessão real de funcionário.
 
 ## Tela de atendimento
 

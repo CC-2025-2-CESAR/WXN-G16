@@ -117,7 +117,9 @@ function Simulacao({ cliente }: { cliente: Cliente }) {
       <aside className="sim-lateral" aria-label="Apoio ao teste">
         <section>
           <h2>Experimente</h2>
-          <p>Clique para a Lily receber a frase, ou escreva a sua no celular.</p>
+          <p>{DEMO_ATIVO
+            ? 'Escolha uma frase ou escreva a sua no celular.'
+            : 'Clique para a Lily receber a frase, ou escreva a sua no celular.'}</p>
           <ul className="sim-exemplos">
             {EXEMPLOS.map((exemplo) => (
               <li key={exemplo}>
@@ -129,7 +131,7 @@ function Simulacao({ cliente }: { cliente: Cliente }) {
           </ul>
         </section>
         <section>
-          <h2>Conversa no servidor</h2>
+          <h2>{DEMO_ATIVO ? 'Conversa de teste' : 'Conversa no servidor'}</h2>
           <p className="sim-estado">
             <span className={`sim-pilula sim-pilula--${status ?? 'NENHUMA'}`}>
               {status ? ROTULO_DO_STATUS[status] : 'Ainda sem conversa'}
@@ -142,8 +144,8 @@ function Simulacao({ cliente }: { cliente: Cliente }) {
             </p>
           )}
           <p>
-            O servidor reconhece o cliente pelo telefone. Para recomeçar do zero, use <b>Cliente novo</b>; limpar a
-            tela não apaga a conversa.
+            {DEMO_ATIVO ? 'Nesta prévia, o telefone identifica cada conversa. ' : 'O servidor reconhece o cliente pelo telefone. '}
+            Para recomeçar do zero, use <b>Cliente novo</b>; limpar a tela não apaga a conversa.
           </p>
           <button type="button" className="sim-botao sim-botao--suave" onClick={limparTela}>
             Limpar a tela
@@ -170,24 +172,6 @@ export default function SimuladorApp() {
     };
   }, []);
 
-  if (DEMO_ATIVO) return (
-    <div className="sim-pagina">
-      <header className="sim-cabecalho">
-        <div>
-          <a className="sim-voltar" href="#/">← Fila de atendimento</a>
-          <h1>Simulador de WhatsApp</h1>
-          <p>A Lily recebe mensagens pelo servidor da WXN.</p>
-        </div>
-      </header>
-      <section className="sim-acesso-real">
-        <span className="sim-acesso-real-marca">WXN · ACESSO DA EQUIPE</span>
-        <h2>Para conversar com a Lily, conecte a central ao servidor.</h2>
-        <p>O simulador precisa da API da WXN e de uma sessão de funcionário ativa.</p>
-        <a className="sim-botao" href={window.location.pathname}>Abrir acesso da equipe</a>
-      </section>
-    </div>
-  );
-
   return (
     <div className="sim-pagina">
       <header className="sim-cabecalho">
@@ -196,9 +180,11 @@ export default function SimuladorApp() {
             ← Fila de atendimento
           </a>
           <h1>Simulador de WhatsApp</h1>
-          <p>Converse com a Lily como um cliente faria pelo WhatsApp, sem depender da Meta.</p>
+          <p>{DEMO_ATIVO
+            ? 'Teste uma conversa sem enviar mensagens pelo WhatsApp. As respostas nesta prévia são simuladas.'
+            : 'Converse com a Lily como um cliente faria pelo WhatsApp, sem depender da Meta.'}</p>
         </div>
-        <StatusBadge status={backend} />
+        {!DEMO_ATIVO && <StatusBadge status={backend} />}
       </header>
       <FormularioDoCliente cliente={cliente} onUsar={setCliente} />
       <Simulacao key={cliente.telefone} cliente={cliente} />

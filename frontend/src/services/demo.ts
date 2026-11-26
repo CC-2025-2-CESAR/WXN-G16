@@ -1,4 +1,5 @@
 import type { Atendente, ConversaNaFila, DetalheConversaFila, EmAtendimento, MensagemResumo, NivelUrgencia, TipoRemetente } from '../types/fila';
+import type { RespostaChat, StatusConversa } from '../simulador/tipos';
 
 type Fala = [TipoRemetente, string];
 type Cenario = {
@@ -90,7 +91,26 @@ const atendentes: Atendente[] = [
   { id: 'demo-carla', nome: 'Carla Nogueira', email: 'carla.nogueira@demo.wxn.example', disponivel: false },
 ];
 type VinculoDemo = { atendenteId: string; assumidaEm: number };
-type EstadoDemo = { criadoEm: number; assumidas: Record<string, VinculoDemo>; respostas: Record<string, MensagemResumo[]> };
+type ConversaDemoSimulada = {
+  id: string;
+  nome: string;
+  telefone: string;
+  motivo: string;
+  abertoEm: string;
+  urgencia: NivelUrgencia;
+  status: StatusConversa;
+  mensagens: MensagemResumo[];
+};
+type EstadoDemo = {
+  criadoEm: number;
+  assumidas: Record<string, VinculoDemo>;
+  respostas: Record<string, MensagemResumo[]>;
+  simuladas?: Record<string, ConversaDemoSimulada>;
+};
+
+const mensagemGenerica = (texto: string) =>
+  /^(oi|ol[aá]|bom dia|boa tarde|boa noite)([,!.?\s]+(tudo bem|como vai)[!?.,\s]*)?[!?.,\s]*$/i.test(texto) ||
+  /^(quero|gostaria de|preciso)\s+(falar com|de)\s+(um[a]?\s+)?(atendente|humano|humana|pessoa)[!?.,\s]*$/i.test(texto);
 const CHAVE_DEMO = 'wxn-demo-conversas';
 function lerEstado(): EstadoDemo | null {
   try {
@@ -102,14 +122,27 @@ function lerEstado(): EstadoDemo | null {
 }
 const estado = lerEstado();
 const criadoEm = typeof estado?.criadoEm === 'number' ? estado.criadoEm : Date.now();
+const simuladas = new Map<string, ConversaDemoSimulada>(
+  Object.entries(estado?.simuladas ?? {}).filter(([id, conversa]) =>
+    id.startsWith('demo-sim-') &&
+    conversa?.id === id &&
+    typeof conversa.telefone === 'string' &&
+    typeof conversa.nome === 'string' &&
+    Array.isArray(conversa.mensagens) &&
+    ['COM_CHATBOT', 'AGUARDANDO_ATENDENTE', 'COM_ATENDENTE'].includes(conversa.status),
+  ),
+);
 const assumidas = new Map<string, VinculoDemo>(
   Object.entries(estado?.assumidas ?? {}).filter(([id, vinculo]) =>
-    cenarios.some((c) => c.id === id) &&
+    (cenarios.some((c) => c.id === id) || simuladas.has(id)) &&
     atendentes.some((a) => a.id === vinculo?.atendenteId) &&
     typeof vinculo?.assumidaEm === 'number',
   ),
 );
-const aguardando = new Set(cenarios.map((cenario) => cenario.id).filter((id) => !assumidas.has(id)));
+const aguardando = new Set([
+  ...cenarios.map((cenario) => cenario.id).filter((id) => !assumidas.has(id)),
+  ...[...simuladas.values()].filter((conversa) => conversa.status === 'AGUARDANDO_ATENDENTE' && !assumidas.has(conversa.id)).map((conversa) => conversa.id),
+]);
 const respostas = new Map<string, MensagemResumo[]>(
   Object.entries(estado?.respostas ?? {}).filter(([id, mensagens]) => assumidas.has(id) && Array.isArray(mensagens)),
 );
@@ -119,10 +152,14 @@ function salvarEstado() {
       criadoEm,
       assumidas: Object.fromEntries(assumidas),
       respostas: Object.fromEntries(respostas),
+      simuladas: Object.fromEntries(simuladas),
     } satisfies EstadoDemo));
   } catch {
     // A demonstração continua nesta página se o armazenamento estiver indisponível.
   }
+}
+function avisarMudanca() {
+  window.dispatchEvent(new Event('wxn:demo-conversations-changed'));
 }
 const abertoEm = (cenario: Cenario) => new Date(criadoEm - cenario.minutosAtras * 60_000).toISOString();
 
@@ -136,25 +173,104 @@ const urgenciaDoCenario = (cenario: Cenario): NivelUrgencia =>
       ? 'BAIXA'
       : 'MEDIA';
 
+const paraFila = (conversa: ConversaDemoSimulada): ConversaNaFila => ({
+  posicao: 0,
+  conversaId: conversa.id,
+  clienteNome: conversa.nome,
+  clienteTelefone: conversa.telefone,
+  motivo: conversa.motivo,
+  abertoEm: conversa.abertoEm,
+  origem: 'SIMULADOR',
+  urgencia: conversa.urgencia,
+});
+
+function detalheSimulada(conversa: ConversaDemoSimulada): DetalheConversaFila {
+  return {
+    ...paraFila(conversa),
+    mensagens: [...conversa.mensagens, ...(respostas.get(conversa.id) ?? [])].sort(
+      (a, b) => Date.parse(a.enviadaEm) - Date.parse(b.enviadaEm),
+    ),
+  };
+}
+
+/** Permite ao celular da prévia retomar as respostas escritas pelo atendente. */
+export function consultarDemoConversa(telefone: string) {
+  const conversa = [...simuladas.values()].find((item) => item.telefone === telefone);
+  if (!conversa) return null;
+  return {
+    conversaId: conversa.id,
+    status: conversa.status,
+    respostas: (respostas.get(conversa.id) ?? []).map((mensagem) => ({ ...mensagem })),
+  };
+}
+
+export function eConversaSimuladaDemo(conversaId: string) {
+  return simuladas.has(conversaId);
+}
+
+/** Prévia local: respostas de exemplo, sem chamada à API ou consulta a dados da WXN. */
+export function enviarDemoParaLily(entrada: { telefone: string; nome: string; texto: string }): RespostaChat {
+  const telefone = entrada.telefone.replace(/\D/g, '');
+  const texto = entrada.texto.trim();
+  const agora = new Date().toISOString();
+  let conversa = [...simuladas.values()].find((item) => item.telefone === telefone);
+  if (!conversa) {
+    conversa = {
+      id: `demo-sim-${crypto.randomUUID()}`,
+      nome: entrada.nome.trim() || `Cliente ${telefone.slice(-4)}`,
+      telefone,
+      motivo: '',
+      abertoEm: agora,
+      urgencia: 'BAIXA',
+      status: 'COM_CHATBOT',
+      mensagens: [],
+    };
+    simuladas.set(conversa.id, conversa);
+  }
+
+  conversa.mensagens.push({ tipoRemetente: 'CLIENTE', conteudo: texto, enviadaEm: agora });
+  let resposta: string | null = null;
+  if (conversa.status === 'COM_CHATBOT') {
+    const pedidoHumano = /\b(atendente|humano|humana|pessoa|suporte)\b|falar\s+com\s+(algu[eé]m|uma pessoa)|abrir\s+(um\s+)?chamado/i.test(texto);
+    const urgente = /urgente|parou|caiu|fora do ar|bloquead|travou|n[aã]o funciona|empresa est[aá] parada/i.test(texto);
+    if (pedidoHumano || urgente) {
+      conversa.motivo = [...conversa.mensagens].reverse().find((mensagem) =>
+        mensagem.tipoRemetente === 'CLIENTE' && !mensagemGenerica(mensagem.conteudo),
+      )?.conteudo ?? 'Solicitou atendimento humano';
+      conversa.urgencia = urgente ? 'ALTA' : 'MEDIA';
+      conversa.status = 'AGUARDANDO_ATENDENTE';
+      aguardando.add(conversa.id);
+      resposta = '[Simulação local] Entendi. Coloquei sua conversa na fila para um atendente continuar com você.';
+    } else if (/\b(status|protocolo|demanda)\b/i.test(texto)) {
+      resposta = '[Simulação local] Não consultei dados reais. Para verificar um protocolo, informe mais detalhes ou peça um atendente.';
+    } else {
+      resposta = '[Simulação local] Recebi sua mensagem. Posso ajudar com uma dúvida ou chamar um atendente.';
+    }
+    conversa.mensagens.push({ tipoRemetente: 'CHATBOT', conteudo: resposta, enviadaEm: new Date().toISOString() });
+  }
+  salvarEstado();
+  avisarMudanca();
+  return { conversaId: conversa.id, resposta, status: conversa.status };
+}
+
 /** Como o backend: mais urgentes primeiro e, entre iguais, quem pediu antes. */
 export function listarDemoFila(): ConversaNaFila[] {
-  return cenarios
+  const fixas = cenarios
     .filter((cenario) => aguardando.has(cenario.id))
-    .map((cenario) => ({ cenario, urgencia: urgenciaDoCenario(cenario) }))
-    .sort(
-      (a, b) =>
-        ORDEM_DA_URGENCIA[a.urgencia] - ORDEM_DA_URGENCIA[b.urgencia] || b.cenario.minutosAtras - a.cenario.minutosAtras,
-    )
-    .map(({ cenario, urgencia }, index) => ({
-      posicao: index + 1,
+    .map((cenario) => ({
+      posicao: 0,
       conversaId: cenario.id,
       clienteNome: cenario.nome,
       clienteTelefone: cenario.telefone,
       motivo: cenario.motivo,
       abertoEm: abertoEm(cenario),
-      origem: 'DEMONSTRACAO',
-      urgencia,
+      origem: 'DEMONSTRACAO' as const,
+      urgencia: urgenciaDoCenario(cenario),
     }));
+  const novas = [...simuladas.values()].filter((conversa) => aguardando.has(conversa.id)).map(paraFila);
+  return [...fixas, ...novas]
+    .sort((a, b) => ORDEM_DA_URGENCIA[a.urgencia] - ORDEM_DA_URGENCIA[b.urgencia] || Date.parse(a.abertoEm) - Date.parse(b.abertoEm))
+    .map((conversa, index) => ({ ...conversa, posicao: index + 1 }));
 }
 
 function mensagensDoCenario(cenario: Cenario): MensagemResumo[] {
@@ -184,6 +300,8 @@ function detalheDoCenario(cenario: Cenario): DetalheConversaFila {
 }
 
 export function abrirDemoConversa(id: string): DetalheConversaFila | null {
+  const simulada = simuladas.get(id);
+  if (simulada && aguardando.has(id)) return detalheSimulada(simulada);
   const cenario = cenarios.find((item) => item.id === id && aguardando.has(item.id));
   return cenario ? detalheDoCenario(cenario) : null;
 }
@@ -195,13 +313,19 @@ export function listarDemoAtendentes(): Atendente[] {
 export function listarDemoAtendimentosAtivos(atendenteId: string): EmAtendimento[] {
   const atendente = atendentes.find((item) => item.id === atendenteId);
   if (!atendente) return [];
-  return cenarios.flatMap((cenario) => {
+  const fixos = cenarios.flatMap((cenario) => {
     const vinculo = assumidas.get(cenario.id);
     if (!vinculo || vinculo.atendenteId !== atendenteId) return [];
     const detalhe = detalheDoCenario(cenario);
     detalhe.mensagens.push(...(respostas.get(cenario.id) ?? []));
     return [{ detalhe, atendente: { ...atendente }, assumidaEm: vinculo.assumidaEm }];
-  }).sort((a, b) => (b.assumidaEm ?? 0) - (a.assumidaEm ?? 0));
+  });
+  const novas = [...simuladas.values()].flatMap((conversa) => {
+    const vinculo = assumidas.get(conversa.id);
+    if (!vinculo || vinculo.atendenteId !== atendenteId) return [];
+    return [{ detalhe: detalheSimulada(conversa), atendente: { ...atendente }, assumidaEm: vinculo.assumidaEm }];
+  });
+  return [...fixos, ...novas].sort((a, b) => (b.assumidaEm ?? 0) - (a.assumidaEm ?? 0));
 }
 
 export function assumirDemoConversa(conversaId: string, atendenteId: string): 'ok' | 'conversa-ausente' | 'atendente-ausente' | 'atendente-indisponivel' {
@@ -211,7 +335,10 @@ export function assumirDemoConversa(conversaId: string, atendenteId: string): 'o
   if (!atendente.disponivel) return 'atendente-indisponivel';
   aguardando.delete(conversaId);
   assumidas.set(conversaId, { atendenteId, assumidaEm: Date.now() });
+  const simulada = simuladas.get(conversaId);
+  if (simulada) simulada.status = 'COM_ATENDENTE';
   salvarEstado();
+  avisarMudanca();
   return 'ok';
 }
 
@@ -219,12 +346,16 @@ export function encerrarDemoConversa(conversaId: string): boolean {
   if (!assumidas.has(conversaId)) return false;
   assumidas.delete(conversaId);
   respostas.delete(conversaId);
+  simuladas.delete(conversaId);
   salvarEstado();
+  avisarMudanca();
   return true;
 }
 
 /** Histórico completo de uma conversa em atendimento: falas do cenário mais as respostas enviadas. */
 export function listarDemoMensagensDoAtendimento(conversaId: string): MensagemResumo[] | null {
+  const simulada = simuladas.get(conversaId);
+  if (simulada && assumidas.has(conversaId)) return detalheSimulada(simulada).mensagens.map((mensagem) => ({ ...mensagem }));
   const cenario = cenarios.find((item) => item.id === conversaId);
   if (!cenario || !assumidas.has(conversaId)) return null;
   return [...mensagensDoCenario(cenario), ...(respostas.get(conversaId) ?? [])].map((mensagem) => ({ ...mensagem }));
@@ -237,5 +368,6 @@ export function enviarDemoMensagem(conversaId: string, texto: string): MensagemR
   const mensagem: MensagemResumo = { tipoRemetente: 'ATENDENTE', conteudo, enviadaEm: new Date().toISOString() };
   respostas.set(conversaId, [...(respostas.get(conversaId) ?? []), mensagem]);
   salvarEstado();
+  avisarMudanca();
   return { ...mensagem };
 }

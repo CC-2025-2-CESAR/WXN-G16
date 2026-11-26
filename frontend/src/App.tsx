@@ -149,7 +149,7 @@ export default function App() {
         <DashboardApp atendente={atendente} onLogout={sairDoPainel} onReady={painelCarregado} />
       </div>
       {rota === 'simulador' && !emTransicao && <SimuladorApp />}
-      {emTransicao && <LoginLoadingScreen nome={atendente.nome} />}
+      {emTransicao && <LoginLoadingScreen />}
     </>
   )
 }

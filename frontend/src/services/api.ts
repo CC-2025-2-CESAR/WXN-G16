@@ -3,6 +3,7 @@ import type { HealthResponse } from '../types/health';
 import {
   abrirDemoConversa,
   assumirDemoConversa,
+  eConversaSimuladaDemo,
   encerrarDemoConversa,
   enviarDemoMensagem,
   listarDemoAtendimentosAtivos,
@@ -177,7 +178,7 @@ export async function enviarMensagemDoAtendente(conversaId: string, texto: strin
     if (resultado === 'texto-invalido') throw new ErroApi('Escreva uma mensagem de 1 a 4000 caracteres.', 400);
     return {
       mensagem: resultado,
-      entregue: false,
+      entregue: eConversaSimuladaDemo(conversaId),
       aviso: null,
     };
   }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { mensagemDoErro } from '../services/api';
+import { DEMO_ATIVO, mensagemDoErro } from '../services/api';
+import { consultarDemoConversa } from '../services/demo';
 import { gravarArmazenado, lerArmazenado } from './armazenamento';
 import { enviarParaLily } from './servico';
 import type { Cliente, EstadoDoEnvio, MensagemSimulada, RespostaChat, StatusConversa } from './tipos';
@@ -21,7 +22,8 @@ function novoId() {
   return `${Date.now()}-${sequencia}`;
 }
 
-const chaveDaConversa = (telefone: string) => `wxn.simulador.v1.conversa.${telefone}`;
+const chaveDaConversa = (telefone: string) =>
+  `wxn.simulador.${DEMO_ATIVO ? 'demo.' : ''}v1.conversa.${telefone}`;
 
 function carregar(telefone: string): Conversa {
   const guardada = lerArmazenado<Conversa>(chaveDaConversa(telefone));
@@ -48,7 +50,9 @@ function avisoDoStatus(anterior: StatusConversa | null, resposta: RespostaChat):
         : 'Mensagem registrada. Um atendente vai responder assim que puder.';
     case 'COM_ATENDENTE':
       return mudou
-        ? 'Um atendente assumiu a conversa. Neste simulador, as respostas dele ainda não chegam aqui.'
+        ? DEMO_ATIVO
+          ? 'Um atendente assumiu a conversa. As respostas aparecerão aqui.'
+          : 'Um atendente assumiu a conversa. Neste simulador, as respostas dele ainda não chegam aqui.'
         : 'Mensagem registrada para o atendente.';
     case 'ENCERRADA':
       return 'Conversa encerrada.';
@@ -87,6 +91,35 @@ export function useConversaSimulada(cliente: Cliente) {
   useEffect(() => {
     gravarArmazenado(chave, { ...conversa, mensagens: conversa.mensagens.slice(-LIMITE_GUARDADO) });
   }, [chave, conversa]);
+
+  useEffect(() => {
+    if (!DEMO_ATIVO) return;
+    const sincronizar = () => {
+      const atualizada = consultarDemoConversa(cliente.telefone);
+      if (!atualizada) return;
+      setConversa((atual) => {
+        const ids = new Set(atual.mensagens.map((mensagem) => mensagem.id));
+        const novas = atualizada.respostas.flatMap((mensagem, indice) => {
+          const id = `${atualizada.conversaId}-atendente-${indice}`;
+          return ids.has(id) ? [] : [{
+            id,
+            de: 'atendente' as const,
+            texto: mensagem.conteudo,
+            em: Date.parse(mensagem.enviadaEm),
+          }];
+        });
+        if (!novas.length && atual.status === atualizada.status && atual.conversaId === atualizada.conversaId) return atual;
+        return {
+          conversaId: atualizada.conversaId,
+          status: atualizada.status,
+          mensagens: [...atual.mensagens, ...novas].sort((a, b) => a.em - b.em),
+        };
+      });
+    };
+    sincronizar();
+    window.addEventListener('wxn:demo-conversations-changed', sincronizar);
+    return () => window.removeEventListener('wxn:demo-conversations-changed', sincronizar);
+  }, [cliente.telefone]);
 
   // Sair da tela com um envio em andamento não cancela a requisição: o servidor processa o turno de qualquer jeito.
   const vivo = useRef(true);

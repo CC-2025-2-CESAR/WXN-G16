@@ -1,4 +1,5 @@
-import { API_URL, ErroApi, obterTokenCsrf } from '../services/api';
+import { API_URL, DEMO_ATIVO, ErroApi, obterTokenCsrf } from '../services/api';
+import { enviarDemoParaLily } from '../services/demo';
 import type { RespostaChat, StatusConversa } from './tipos';
 
 // A resposta passa pela Lily (e, em produção, pelo Gemini) e o servidor gratuito do Azure leva uns 30 s para acordar,
@@ -48,6 +49,10 @@ function lerResposta(dados: unknown): RespostaChat {
 
 /** Manda a mensagem de um telefone para a Lily (POST /api/chat/mensagens), como o canal do WhatsApp faz. */
 export async function enviarParaLily(entrada: Entrada, signal?: AbortSignal): Promise<RespostaChat> {
+  if (DEMO_ATIVO) {
+    signal?.throwIfAborted();
+    return enviarDemoParaLily(entrada);
+  }
   const limite = AbortSignal.timeout(TEMPO_LIMITE_MS);
   const sinal = signal ? AbortSignal.any([signal, limite]) : limite;
   const csrf = await obterTokenCsrf();
