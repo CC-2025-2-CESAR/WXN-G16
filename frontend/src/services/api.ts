@@ -61,13 +61,31 @@ export async function obterTokenCsrf(): Promise<string> {
   return buscaToken;
 }
 
+const METODOS_SEM_CSRF = ['GET', 'HEAD', 'OPTIONS'];
+
+/**
+ * fetch com o cookie de sessão e, nos pedidos que mudam dados, o token CSRF. O token guardado pode ser de uma sessão que
+ * não existe mais (o backend reiniciou ou a sessão venceu): num 403, pega um novo e tenta uma vez. É seguro repetir,
+ * porque um 403 quer dizer que o servidor não executou o pedido.
+ */
+export async function buscarComSessao(url: string, init: RequestInit = {}): Promise<Response> {
+  const protegido = !METODOS_SEM_CSRF.includes((init.method ?? 'GET').toUpperCase());
+  const enviar = async () => {
+    const headers = new Headers(init.headers);
+    if (protegido) headers.set('X-XSRF-TOKEN', await obterTokenCsrf());
+    return fetch(url, { ...init, credentials: 'include', headers });
+  };
+  const resposta = await enviar();
+  if (resposta.status !== 403 || !protegido) return resposta;
+  tokenCsrf = null;
+  return enviar();
+}
+
 async function requisitar(caminho: string, init?: RequestInit) {
   const limite = AbortSignal.timeout(TEMPO_LIMITE_MS);
   const signal = init?.signal ? AbortSignal.any([init.signal, limite]) : limite;
-  const metodo = (init?.method ?? 'GET').toUpperCase();
-  const headers = new Headers(init?.headers);
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(metodo)) headers.set('X-XSRF-TOKEN', await obterTokenCsrf());
-  const resposta = await fetch(`${API_URL}${caminho}`, { ...init, credentials: 'include', headers, signal }).catch(() => {
+  const resposta = await buscarComSessao(`${API_URL}${caminho}`, { ...init, signal }).catch((erro: unknown) => {
+    if (erro instanceof ErroApi) throw erro;
     throw new ErroApi(limite.aborted ? MENSAGEM_TEMPO_ESGOTADO : 'Não foi possível falar com o servidor.', 0);
   });
 

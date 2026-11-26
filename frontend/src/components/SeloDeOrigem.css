@@ -11,6 +11,14 @@
   white-space: nowrap;
 }
 
+/* Dado fictício: contorno tracejado e cinza, de propósito sem cara de "ao vivo". */
+.selo-origem--demonstracao {
+  background: #f2f0f6;
+  border-color: #b7aecb;
+  border-style: dashed;
+  color: #5b5470;
+}
+
 /* Teste feito por gente do grupo. */
 .selo-origem--simulador {
   background: #efe9fb;

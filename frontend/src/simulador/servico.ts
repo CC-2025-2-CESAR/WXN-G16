@@ -1,4 +1,4 @@
-import { API_URL, DEMO_ATIVO, ErroApi, obterTokenCsrf } from '../services/api';
+import { API_URL, DEMO_ATIVO, ErroApi, buscarComSessao } from '../services/api';
 import { enviarDemoParaLily } from '../services/demo';
 import type { RespostaChat, StatusConversa } from './tipos';
 
@@ -55,11 +55,9 @@ export async function enviarParaLily(entrada: Entrada, signal?: AbortSignal): Pr
   }
   const limite = AbortSignal.timeout(TEMPO_LIMITE_MS);
   const sinal = signal ? AbortSignal.any([signal, limite]) : limite;
-  const csrf = await obterTokenCsrf();
-  const resposta = await fetch(`${API_URL}/api/chat/mensagens`, {
+  const resposta = await buscarComSessao(`${API_URL}/api/chat/mensagens`, {
     method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrf },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       telefone: entrada.telefone,
       nome: entrada.nome || undefined,
@@ -67,7 +65,7 @@ export async function enviarParaLily(entrada: Entrada, signal?: AbortSignal): Pr
     }),
     signal: sinal,
   }).catch((erro: unknown) => {
-    if (signal?.aborted) throw erro;
+    if (signal?.aborted || erro instanceof ErroApi) throw erro;
     throw new ErroApi(limite.aborted ? MENSAGEM_TEMPO_ESGOTADO : 'Não foi possível falar com o servidor.', 0);
   });
 
