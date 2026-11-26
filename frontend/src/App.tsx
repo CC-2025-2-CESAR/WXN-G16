@@ -94,9 +94,12 @@ export default function App() {
     try {
       iniciarEntrada(await entrar(email.trim(), senha))
     } catch (falha) {
-      setErro(falha instanceof ErroApi && falha.status === 401
+      const status = falha instanceof ErroApi ? falha.status : null
+      setErro(status === 401
         ? 'E-mail ou senha incorretos.'
-        : mensagemDoErro(falha))
+        : status === 403
+          ? 'O navegador não devolveu o cookie de sessão. Libere os cookies de terceiros para este site (ou desligue o bloqueador) e recarregue a página.'
+          : mensagemDoErro(falha))
     } finally {
       setOcupado(false)
     }
