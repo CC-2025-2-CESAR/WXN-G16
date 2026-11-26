@@ -296,7 +296,7 @@ export function HistoryPage({ atendente }: { atendente: Atendente }) {
                 <td><div className="history-client"><span className="avatar">{iniciais(item.clienteNome)}</span><span><strong>{item.clienteNome}</strong><small>{formatarTelefone(item.clienteTelefone)}</small></span></div></td>
                 <td><span className="history-reason">{item.motivo || 'Motivo não informado'}</span></td>
                 <td><span className="history-agent">{item.atendenteNome ?? 'Não atribuído'}</span></td>
-                <td>{item.origem === 'DEMONSTRACAO' ? <span className="history-channel-muted">—</span> : <SeloDeOrigem origem={item.origem} />}</td>
+                <td><SeloDeOrigem origem={item.origem} /></td>
                 <td><time dateTime={item.encerradaEm} className="history-date">{formatoDataHora.format(new Date(item.encerradaEm))}</time></td>
                 <td><button type="button" className="history-row-action" aria-label={`Abrir histórico de ${item.clienteNome}`} onClick={(evento) => { evento.stopPropagation(); abrir(item.conversaId); }}><Icon name="chevron-right" /></button></td>
               </tr>

@@ -3,8 +3,8 @@ import './SeloDeOrigem.css';
 
 const SELOS: Record<OrigemConversa, { rotulo: string; dica: string }> = {
   DEMONSTRACAO: {
-    rotulo: '',
-    dica: '',
+    rotulo: 'Demonstração',
+    dica: 'Dados fictícios de demonstração: não é uma pessoa de verdade.',
   },
   SIMULADOR: {
     rotulo: 'Simulador',
@@ -20,11 +20,11 @@ const SELOS: Record<OrigemConversa, { rotulo: string; dica: string }> = {
   },
 };
 
-/** Mostra o canal das conversas recebidas pelos canais conectados. */
+/** Um selo pequeno que diz de onde a conversa veio, para ninguém confundir um teste com um cliente real. */
 export function SeloDeOrigem({ origem }: { origem: OrigemConversa }) {
   // Um servidor mais antigo pode não mandar a origem: sem ela, a tela só não mostra o selo.
   const selo = SELOS[origem];
-  if (!selo?.rotulo) return null;
+  if (!selo) return null;
   return (
     <span className={`selo-origem selo-origem--${origem.toLowerCase()}`} title={selo.dica}>
       {selo.rotulo}
