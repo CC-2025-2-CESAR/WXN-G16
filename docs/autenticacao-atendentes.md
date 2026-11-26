@@ -29,6 +29,12 @@ As rotas `/api/fila`, `/api/atendentes`, `/api/conversas`, `/api/atendimentos` e
 
 ## Origem do frontend e cookies
 
-`CORS_ALLOWED_ORIGINS` deve conter apenas as origens exatas do frontend, separadas por vírgula. No desenvolvimento, o padrão é `http://localhost:5173`. Quando frontend e backend estiverem em sites diferentes, use HTTPS e configure `SESSION_COOKIE_SAME_SITE=none` e `SESSION_COOKIE_SECURE=true`. No perfil `prod`, o cookie seguro já vem ativado por padrão.
+`CORS_ALLOWED_ORIGINS` deve conter apenas as origens exatas do frontend, separadas por vírgula (nunca `*`: o cookie vai junto com a requisição). No desenvolvimento, o padrão é `http://localhost:5173`.
+
+Em produção o frontend (`azurestaticapps.net`) e o backend (`azurewebsites.net`) são **sites diferentes**. Por isso o perfil `prod` já vem com `SameSite=None`, `Secure` e `Partitioned`; não é preciso criar variável no Azure. Sem isso o navegador não envia o cookie e o login não funciona. Dá para trocar com `SESSION_COOKIE_SAME_SITE`, `SESSION_COOKIE_SECURE` e `SESSION_COOKIE_PARTITIONED`. Alguns navegadores bloqueiam cookie de terceiros mesmo assim (o Safari, inclusive no iPhone); se o login não funcionar neles, use Chrome, Edge ou Firefox. A solução definitiva é servir o frontend e a API no mesmo site.
+
+## Antes do primeiro deploy
+
+Sem nenhuma conta provisionada, o backend sobe, mas **ninguém consegue entrar no painel**. Antes de levar esta versão para a produção, defina no App Service as três variáveis `ATENDENTE_PROVISIONAR_*` (veja acima). Para continuar vendo as conversas que já estavam em atendimento, use o e-mail do atendente que as assumiu.
 
 O envio da resposta ao cliente depende do canal. Atualmente o Telegram pode receber a mensagem; WhatsApp e simulador ainda podem apenas registrá-la no histórico, com `entregue: false` e um aviso retornado pela API. Veja `docs/ui-fila-atendimento.md`.

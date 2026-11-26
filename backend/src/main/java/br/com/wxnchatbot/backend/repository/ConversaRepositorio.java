@@ -49,14 +49,18 @@ public interface ConversaRepositorio extends JpaRepository<Conversa, UUID> {
 			""")
 	List<Conversa> buscarAtendimentosAtivos(@Param("atendenteId") UUID atendenteId);
 
-	/** Histórico paginado, sempre restrito a conversas encerradas. */
+	/**
+	 * Histórico paginado, sempre restrito a conversas encerradas. Um filtro vazio é decidido no Java (SpEL) e não com
+	 * {@code :x is null}: o PostgreSQL não descobre o tipo de um parâmetro que só aparece nessa comparação e a consulta
+	 * inteira falha (SQLState 42P18).
+	 */
 	@Query(value = """
 			select c from Conversa c
 			join fetch c.cliente cliente
 			left join fetch c.atendente atendente
 			left join fetch c.ticket ticket
 			where c.status = br.com.wxnchatbot.backend.model.StatusConversa.ENCERRADA
-			and (:busca is null or c.id = :idBusca
+			and (:#{#busca == null} = true or c.id = :idBusca
 				or lower(cliente.nome) like :busca escape '!'
 				or cliente.telefone like :busca escape '!'
 				or lower(ticket.motivo) like :busca escape '!'
@@ -64,10 +68,10 @@ public interface ConversaRepositorio extends JpaRepository<Conversa, UUID> {
 				or lower(c.resumoEncerramento) like :busca escape '!'
 				or exists (select mensagem.id from Mensagem mensagem
 					where mensagem.conversa = c and lower(mensagem.conteudo) like :busca escape '!'))
-			and (:inicio is null or c.encerradaEm >= :inicio)
-			and (:fim is null or c.encerradaEm < :fim)
-			and (:atendenteId is null or atendente.id = :atendenteId)
-			and (:origem is null or c.origem = :origem)
+			and (:#{#inicio == null} = true or c.encerradaEm >= :inicio)
+			and (:#{#fim == null} = true or c.encerradaEm < :fim)
+			and (:#{#atendenteId == null} = true or atendente.id = :atendenteId)
+			and (:#{#origem == null} = true or c.origem = :origem)
 			order by c.encerradaEm desc, c.id desc
 			""", countQuery = """
 			select count(c) from Conversa c
@@ -75,7 +79,7 @@ public interface ConversaRepositorio extends JpaRepository<Conversa, UUID> {
 			left join c.atendente atendente
 			left join c.ticket ticket
 			where c.status = br.com.wxnchatbot.backend.model.StatusConversa.ENCERRADA
-			and (:busca is null or c.id = :idBusca
+			and (:#{#busca == null} = true or c.id = :idBusca
 				or lower(cliente.nome) like :busca escape '!'
 				or cliente.telefone like :busca escape '!'
 				or lower(ticket.motivo) like :busca escape '!'
@@ -83,10 +87,10 @@ public interface ConversaRepositorio extends JpaRepository<Conversa, UUID> {
 				or lower(c.resumoEncerramento) like :busca escape '!'
 				or exists (select mensagem.id from Mensagem mensagem
 					where mensagem.conversa = c and lower(mensagem.conteudo) like :busca escape '!'))
-			and (:inicio is null or c.encerradaEm >= :inicio)
-			and (:fim is null or c.encerradaEm < :fim)
-			and (:atendenteId is null or atendente.id = :atendenteId)
-			and (:origem is null or c.origem = :origem)
+			and (:#{#inicio == null} = true or c.encerradaEm >= :inicio)
+			and (:#{#fim == null} = true or c.encerradaEm < :fim)
+			and (:#{#atendenteId == null} = true or atendente.id = :atendenteId)
+			and (:#{#origem == null} = true or c.origem = :origem)
 			""")
 	Page<Conversa> buscarHistorico(@Param("busca") String busca, @Param("idBusca") UUID idBusca,
 			@Param("inicio") Instant inicio, @Param("fim") Instant fim,

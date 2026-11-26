@@ -1,5 +1,7 @@
 package br.com.wxnchatbot.backend.controller;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -74,7 +76,7 @@ class ConsultaComApiSimuladaIntegracaoTest {
 	}
 
 	private RespostaChat enviar(String texto) throws Exception {
-		String corpo = mvc.perform(post("/api/chat/mensagens").contentType(MediaType.APPLICATION_JSON)
+		String corpo = mvc.perform(post("/api/chat/mensagens").with(csrf()).with(user("equipe")).contentType(MediaType.APPLICATION_JSON)
 				.content(json.writeValueAsString(Map.of("telefone", TELEFONE, "nome", "Teste do Chat", "texto", texto))))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 		return json.readValue(corpo, RespostaChat.class);
