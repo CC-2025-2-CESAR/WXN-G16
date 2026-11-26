@@ -24,7 +24,7 @@ aceita estas contas de teste:
 | Ana Martins | `ana.martins@demo.wxn.example` | `Demo@2026` |
 | Paulo Mendes | `paulo.mendes@demo.wxn.example` | `Paulo@2026` |
 
-Elas permitem testar a fila, assumir conversas e responder pelo dashboard sem
+Elas permitem testar a fila, assumir conversas, responder e consultar o histórico sem
 iniciar o backend. São dados fictícios no navegador: nenhuma resposta é
 enviada a um cliente real. A sessão e os atendimentos de exemplo ficam no
 `sessionStorage` da aba e sobrevivem a uma atualização da página. Sem
@@ -51,7 +51,9 @@ que precisa estar no ar e com o CORS liberado para a origem do Vite.
 | Assumir uma conversa como funcionário autenticado | `POST /api/fila/{conversaId}/assumir` |
 | Retomar as conversas do funcionário após recarregar | `GET /api/atendimentos/ativos` |
 | Ver histórico e responder ao cliente | `GET/POST /api/conversas/{conversaId}/atendimento/mensagens` |
-| Encerrar uma conversa assumida | `POST /api/conversas/{conversaId}/encerrar` |
+| Encerrar uma conversa assumida, com resumo opcional | `POST /api/conversas/{conversaId}/encerrar` |
+| Consultar conversas encerradas, com busca, filtros e paginação | `GET /api/historico` |
+| Ler uma conversa encerrada e suas mensagens | `GET /api/historico/{conversaId}` |
 | Mostrar o status do backend na lateral | `GET /api/health` |
 
 Quando o servidor recusa uma operação, a tela mostra o campo `detail` da
@@ -66,7 +68,12 @@ fila (404 ou 409), o painel avisa e a fila é recarregada.
   respostas e acesso às outras conversas do atendente.
 - **Entrega da resposta**: a API informa se a mensagem chegou ao canal do
   cliente. Se ela foi apenas salva no histórico, a tela mostra um aviso.
-- **Ainda em breve**: histórico geral e transferência de atendimento.
+- **Histórico**: o menu lateral reúne conversas encerradas. É possível buscar
+  por cliente, telefone, assunto, resumo e texto das mensagens; filtrar por
+  período, atendente e canal; e abrir o atendimento completo em leitura. A
+  tecla `/` foca a busca. O resumo opcional escrito ao encerrar também aparece
+  nessa página.
+- **Ainda em breve**: transferência de atendimento.
 
 ## Estrutura de `src`
 

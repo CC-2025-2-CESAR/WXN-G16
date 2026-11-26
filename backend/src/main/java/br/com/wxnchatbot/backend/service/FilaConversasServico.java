@@ -72,6 +72,11 @@ public class FilaConversasServico {
 
 	@Transactional
 	public void encerrarComoAtendente(UUID conversaId, UUID atendenteId) {
+		encerrarComoAtendente(conversaId, atendenteId, null);
+	}
+
+	@Transactional
+	public void encerrarComoAtendente(UUID conversaId, UUID atendenteId, String resumoEncerramento) {
 		Conversa conversa = conversaRepositorio.buscarPorIdParaAtualizar(conversaId)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Conversa", conversaId));
 		if (conversa.getStatus() != StatusConversa.COM_ATENDENTE) {
@@ -81,7 +86,7 @@ public class FilaConversasServico {
 				|| !conversa.getAtendente().orElseThrow().getId().equals(atendenteId)) {
 			throw new AccessDeniedException("Esta conversa pertence a outro atendente.");
 		}
-		conversa.encerrar();
+		conversa.encerrar(resumoEncerramento);
 		conversaRepositorio.save(conversa);
 	}
 

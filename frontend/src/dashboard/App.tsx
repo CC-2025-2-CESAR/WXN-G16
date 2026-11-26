@@ -20,8 +20,10 @@ import { ConversationDetail } from "./components/ConversationDetail";
 import { Modal } from "./components/Modal";
 import { ActiveOverview } from "./components/ActiveOverview";
 import { ActiveConversation } from "./components/ActiveConversation";
+import { HistoryPage } from "./components/HistoryPage";
 
 type ModalType = "settings" | "notifications" | "resolve" | null;
+type Pagina = Aba | "historico";
 
 type Props = { atendente: Atendente; onLogout: () => void; onReady?: () => void };
 
@@ -29,11 +31,13 @@ export default function App({ atendente, onLogout, onReady }: Props) {
   const fila = useFila();
   const meusAtendimentos = useAtendimentos(atendente.id);
   const backend = useBackendHealth();
-  const [aba, setAba] = useState<Aba>(() => window.location.hash.startsWith("#/atendimento") ? "atendimento" : "fila");
+  const [aba, setAba] = useState<Pagina>(() => window.location.hash.startsWith("#/historico")
+    ? "historico" : window.location.hash.startsWith("#/atendimento") ? "atendimento" : "fila");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const atendimento = meusAtendimentos.itens;
   const [modal, setModal] = useState<ModalType>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [resumoEncerramento, setResumoEncerramento] = useState("");
   const [toast, setToast] = useState<{ text: string; erro: boolean } | null>(
     null,
   );
@@ -61,7 +65,8 @@ export default function App({ atendente, onLogout, onReady }: Props) {
   useEffect(() => {
     const sincronizarRota = () => {
       if (!window.location.hash.startsWith("#/simulador"))
-        setAba(window.location.hash.startsWith("#/atendimento") ? "atendimento" : "fila");
+        setAba(window.location.hash.startsWith("#/historico")
+          ? "historico" : window.location.hash.startsWith("#/atendimento") ? "atendimento" : "fila");
     };
     window.addEventListener("hashchange", sincronizarRota);
     return () => window.removeEventListener("hashchange", sincronizarRota);
@@ -128,19 +133,21 @@ export default function App({ atendente, onLogout, onReady }: Props) {
     const retirar = () => meusAtendimentos.retirar(conversaId);
     setOcupado(true);
     try {
-      await encerrarConversa(conversaId);
+      await encerrarConversa(conversaId, resumoEncerramento.trim() || undefined);
       retirar();
       setSelectedId(null);
+      setResumoEncerramento("");
+      setModal(null);
       notify(`Atendimento de ${clienteNome} encerrado.`);
     } catch (erro) {
       if (erro instanceof ErroApi && [404, 409].includes(erro.status)) {
         retirar();
         setSelectedId(null);
+        setModal(null);
       }
       notify(mensagemDoErro(erro), true);
     } finally {
       setOcupado(false);
-      setModal(null);
       fila.recarregar();
     }
   };
@@ -154,6 +161,15 @@ export default function App({ atendente, onLogout, onReady }: Props) {
     setSelectedId(null);
     window.location.hash = "#/atendimento";
   };
+  const goHistorico = () => {
+    setAba("historico");
+    setSelectedId(null);
+    window.location.hash = "#/historico";
+  };
+  const abrirEncerramento = () => {
+    setResumoEncerramento("");
+    setModal("resolve");
+  };
   const dateLabel = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "short",
@@ -162,7 +178,7 @@ export default function App({ atendente, onLogout, onReady }: Props) {
 
   return (
     <>
-      <div className={`app-shell ${aba === "atendimento" ? "active-chat-open" : ""}`}>
+      <div className={`app-shell ${aba === "atendimento" ? "active-chat-open" : aba === "historico" ? "history-open" : ""}`}>
         <Sidebar
           count={aguardando}
           activeCount={atendimento.length}
@@ -172,6 +188,7 @@ export default function App({ atendente, onLogout, onReady }: Props) {
           demo={DEMO_ATIVO}
           onHome={goHome}
           onAtendimento={goAtendimento}
+          onHistorico={goHistorico}
           onSettings={openSettings}
           onLogout={onLogout}
         />
@@ -179,13 +196,13 @@ export default function App({ atendente, onLogout, onReady }: Props) {
           <header className="page-header">
             <div>
               <div className="breadcrumb">
-                Atendimento <span>/</span> <b>{aba === "fila" ? "Visão geral" : "Meu espaço"}</b>
+                Atendimento <span>/</span> <b>{aba === "fila" ? "Visão geral" : aba === "historico" ? "Consulta" : "Meu espaço"}</b>
               </div>
               <h1>
-                {aba === "fila" ? "Fila de conversas" : "Em atendimento"}
+                {aba === "fila" ? "Fila de conversas" : aba === "historico" ? "Histórico" : "Em atendimento"}
                 <span className="heading-dot" />
               </h1>
-              <p>{aba === "fila" ? "Cada conversa, um atendimento mais próximo." : "Suas conversas reunidas para seguir de onde você parou."}</p>
+              <p>{aba === "fila" ? "Cada conversa, um atendimento mais próximo." : aba === "historico" ? "Tudo o que foi atendido, fácil de encontrar." : "Suas conversas reunidas para seguir de onde você parou."}</p>
             </div>
             <div className="header-actions">
               <span className="today">{dateLabel}</span>
@@ -214,7 +231,9 @@ export default function App({ atendente, onLogout, onReady }: Props) {
               <button className="text-button" onClick={meusAtendimentos.recarregar}>Tentar novamente</button>
             </div>
           )}
-          {aba === "atendimento" && emAtendimento ? (
+          {aba === "historico" ? (
+            <HistoryPage atendente={atendente} />
+          ) : aba === "atendimento" && emAtendimento ? (
             <ActiveConversation
               atendimentos={atendimento}
               selectedId={emAtendimento.detalhe.conversaId}
@@ -222,7 +241,7 @@ export default function App({ atendente, onLogout, onReady }: Props) {
               ocupado={ocupado}
               onSelect={abrir}
               onBack={fecharPainel}
-              onResolve={() => setModal("resolve")}
+              onResolve={abrirEncerramento}
               onMessageSent={meusAtendimentos.adicionarMensagem}
             />
           ) : (
@@ -240,7 +259,7 @@ export default function App({ atendente, onLogout, onReady }: Props) {
               <ConversationTable
                 fila={fila.itens}
                 atendimento={atendimento}
-                aba={aba}
+                aba={aba as Aba}
                 onAba={abaSelecionada => abaSelecionada === "fila" ? goHome() : goAtendimento()}
                 selectedId={selectedId}
                 onSelect={abrir}
@@ -282,7 +301,7 @@ export default function App({ atendente, onLogout, onReady }: Props) {
             ocupado={ocupado}
             onClose={fecharPainel}
             onAssume={assume}
-            onResolve={() => setModal("resolve")}
+            onResolve={abrirEncerramento}
             onSettings={openSettings}
             onIndisponivel={conversaSaiuDaFila}
             onMessageSent={meusAtendimentos.adicionarMensagem}
@@ -400,6 +419,17 @@ export default function App({ atendente, onLogout, onReady }: Props) {
             A conversa de {emAtendimento.detalhe.clienteNome} será encerrada e
             sairá da sua lista de atendimentos.
           </p>
+          <label className="history-close-note">
+            <span>Resumo do atendimento <small>Opcional</small></span>
+            <textarea
+              value={resumoEncerramento}
+              onChange={(evento) => setResumoEncerramento(evento.target.value)}
+              maxLength={1000}
+              rows={3}
+              placeholder="O que foi resolvido ou encaminhado?"
+            />
+            <small>Essa observação aparecerá no histórico. {resumoEncerramento.length}/1000</small>
+          </label>
           <div className="modal-actions">
             <button
               className="button secondary"

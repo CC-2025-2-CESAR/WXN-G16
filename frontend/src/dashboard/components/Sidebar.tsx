@@ -8,12 +8,13 @@ import { Icon } from "../icons";
 type Props = {
   count: number | undefined;
   activeCount: number;
-  activePage: Aba;
+  activePage: Aba | 'historico';
   atendente: Atendente;
   backend: BackendStatus;
   demo: boolean;
   onHome: () => void;
   onAtendimento: () => void;
+  onHistorico: () => void;
   onSettings: () => void;
   onLogout: () => void;
 };
@@ -26,6 +27,7 @@ export function Sidebar({
   demo,
   onHome,
   onAtendimento,
+  onHistorico,
   onSettings,
   onLogout,
 }: Props) {
@@ -84,10 +86,14 @@ export function Sidebar({
           <span>Em atendimento</span>
           <b>{activeCount}</b>
         </button>
-        <button title="Histórico (em breve)" className="nav-item" disabled>
+        <button
+          title="Histórico de conversas"
+          className={`nav-item ${activePage === 'historico' ? 'active' : ''}`}
+          aria-current={activePage === 'historico' ? 'page' : undefined}
+          onClick={onHistorico}
+        >
           <Icon name="history" />
           <span>Histórico</span>
-          <b>Em breve</b>
         </button>
         <button title="Configurações" className="nav-item" onClick={onSettings}>
           <Icon name="settings" />

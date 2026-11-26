@@ -123,6 +123,17 @@ class ConversaControllerTest {
 	}
 
 	@Test
+	void encerrarAceitaResumoOpcional() throws Exception {
+		mvc.perform(post("/api/conversas/{id}/encerrar", CONVERSA)
+				.contentType("application/json")
+				.content("{\"resumoEncerramento\":\"Cliente orientado a refazer o relatório.\"}"))
+				.andExpect(status().isNoContent());
+
+		verify(servico).encerrarComoAtendente(CONVERSA, ATENDENTE,
+				"Cliente orientado a refazer o relatório.");
+	}
+
+	@Test
 	void encerrarConversaInexistenteDevolve404() throws Exception {
 		doThrow(new RecursoNaoEncontradoException("Conversa", CONVERSA)).when(servico).encerrarComoAtendente(CONVERSA, ATENDENTE);
 

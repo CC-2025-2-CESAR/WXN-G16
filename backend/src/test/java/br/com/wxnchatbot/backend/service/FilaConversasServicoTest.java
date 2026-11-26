@@ -363,4 +363,21 @@ class FilaConversasServicoTest {
 		assertEquals(StatusConversa.ENCERRADA, conversa.getStatus());
 		verify(conversas).save(conversa);
 	}
+
+	@Test
+	void resumoDoEncerramentoEhGuardadoEValidado() {
+		Conversa conversa = conversaNaFila("Maria Souza", "81999990001", "Relatório divergente");
+		Atendente responsavel = atendente();
+		conversa.atribuirAtendente(responsavel);
+		when(conversas.buscarPorIdParaAtualizar(conversa.getId())).thenReturn(Optional.of(conversa));
+
+		assertThrows(IllegalArgumentException.class, () -> servico.encerrarComoAtendente(
+				conversa.getId(), responsavel.getId(), "x".repeat(1001)));
+		assertEquals(StatusConversa.COM_ATENDENTE, conversa.getStatus());
+		verify(conversas, never()).save(any());
+
+		servico.encerrarComoAtendente(conversa.getId(), responsavel.getId(), "  Problema resolvido.  ");
+		assertEquals("Problema resolvido.", conversa.getResumoEncerramento().orElseThrow());
+		assertEquals(StatusConversa.ENCERRADA, conversa.getStatus());
+	}
 }

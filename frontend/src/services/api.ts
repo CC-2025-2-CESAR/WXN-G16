@@ -1,14 +1,17 @@
 import type { Atendente, ConversaNaFila, DetalheConversaFila, EmAtendimento, MensagemResumo, RespostaDoAtendente } from '../types/fila';
 import type { HealthResponse } from '../types/health';
+import type { FiltrosHistorico, HistoricoDetalhe, PaginaHistorico } from '../types/historico';
 import {
   abrirDemoConversa,
   assumirDemoConversa,
+  detalharDemoHistorico,
   eConversaSimuladaDemo,
   encerrarDemoConversa,
   enviarDemoMensagem,
   listarDemoAtendimentosAtivos,
   listarDemoAtendentes,
   listarDemoFila,
+  listarDemoHistorico,
   listarDemoMensagensDoAtendimento,
 } from './demo';
 
@@ -150,12 +153,66 @@ export async function assumirConversa(conversaId: string, atendenteId: string) {
   });
 }
 
-export async function encerrarConversa(conversaId: string) {
+export async function encerrarConversa(conversaId: string, resumoEncerramento?: string) {
   if (DEMO_ATIVO) {
-    if (!encerrarDemoConversa(conversaId)) throw new ErroApi('Conversa não encontrada em atendimento.', 404);
+    if (!encerrarDemoConversa(conversaId, resumoEncerramento)) throw new ErroApi('Conversa não encontrada em atendimento.', 404);
     return;
   }
-  await requisitar(`/api/conversas/${conversaId}/encerrar`, { method: 'POST' });
+  await requisitar(`/api/conversas/${conversaId}/encerrar`, {
+    method: 'POST',
+    ...(resumoEncerramento ? {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resumoEncerramento }),
+    } : {}),
+  });
+}
+
+export async function listarHistorico(filtros: FiltrosHistorico, signal?: AbortSignal): Promise<PaginaHistorico> {
+  const pagina = filtros.pagina ?? 0;
+  const tamanho = filtros.tamanho ?? 20;
+  if (DEMO_ATIVO) {
+    signal?.throwIfAborted();
+    const normalizar = (valor: string) => valor.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+    const busca = normalizar(filtros.busca?.trim() ?? '');
+    const formatoData = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    const dataLocal = (instante: string) => {
+      const partes = Object.fromEntries(formatoData.formatToParts(new Date(instante)).map(({ type, value }) => [type, value]));
+      return `${partes.year}-${partes.month}-${partes.day}`;
+    };
+    const itens = listarDemoHistorico().filter((item) => {
+      const mensagens = detalharDemoHistorico(item.conversaId)?.mensagens.map((mensagem) => mensagem.conteudo).join(' ') ?? '';
+      const texto = normalizar(`${item.clienteNome} ${item.clienteTelefone} ${item.clienteTelefone.replace(/\D/g, '')} ${item.motivo} ${item.resumoEncerramento ?? ''} ${mensagens}`);
+      const data = dataLocal(item.encerradaEm);
+      return (!busca || texto.includes(busca)) &&
+        (!filtros.dataInicial || data >= filtros.dataInicial) &&
+        (!filtros.dataFinal || data <= filtros.dataFinal) &&
+        (!filtros.atendenteId || item.atendenteId === filtros.atendenteId) &&
+        (!filtros.origem || item.origem === filtros.origem);
+    });
+    return { itens: itens.slice(pagina * tamanho, (pagina + 1) * tamanho), total: itens.length, pagina, tamanho };
+  }
+  const parametros = new URLSearchParams();
+  for (const chave of ['busca', 'dataInicial', 'dataFinal', 'atendenteId', 'origem'] as const) {
+    const valor = filtros[chave];
+    if (valor) parametros.set(chave, valor);
+  }
+  parametros.set('pagina', String(pagina));
+  parametros.set('tamanho', String(tamanho));
+  const resposta = await requisitar(`/api/historico?${parametros}`, { signal });
+  return resposta.json();
+}
+
+export async function detalharHistorico(conversaId: string, signal?: AbortSignal): Promise<HistoricoDetalhe> {
+  if (DEMO_ATIVO) {
+    signal?.throwIfAborted();
+    const detalhe = detalharDemoHistorico(conversaId);
+    if (!detalhe) throw new ErroApi('Conversa encerrada não encontrada.', 404);
+    return detalhe;
+  }
+  const resposta = await requisitar(`/api/historico/${encodeURIComponent(conversaId)}`, { signal });
+  return resposta.json();
 }
 
 /** Histórico completo de uma conversa em atendimento, da mais antiga para a mais nova. */

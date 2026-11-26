@@ -1,4 +1,5 @@
 import type { Atendente, ConversaNaFila, DetalheConversaFila, EmAtendimento, MensagemResumo, NivelUrgencia, TipoRemetente } from '../types/fila';
+import type { HistoricoDetalhe, HistoricoItem } from '../types/historico';
 import type { RespostaChat, StatusConversa } from '../simulador/tipos';
 
 type Fala = [TipoRemetente, string];
@@ -106,6 +107,7 @@ type EstadoDemo = {
   assumidas: Record<string, VinculoDemo>;
   respostas: Record<string, MensagemResumo[]>;
   simuladas?: Record<string, ConversaDemoSimulada>;
+  encerradas?: Record<string, HistoricoDetalhe>;
 };
 
 const mensagemGenerica = (texto: string) =>
@@ -122,6 +124,108 @@ function lerEstado(): EstadoDemo | null {
 }
 const estado = lerEstado();
 const criadoEm = typeof estado?.criadoEm === 'number' ? estado.criadoEm : Date.now();
+const exemplosEncerrados: Array<{
+  id: string;
+  nome: string;
+  telefone: string;
+  motivo: string;
+  horasAtras: number;
+  duracaoMinutos: number;
+  atendenteId: string;
+  resumo: string;
+  falas: Fala[];
+}> = [
+  {
+    id: 'demo-hist-01', nome: 'Beatriz Melo', telefone: '81 99999-0201',
+    motivo: 'Acesso ao portal bloqueado após atualização de senha', horasAtras: 1, duracaoMinutos: 34,
+    atendenteId: 'demo-ana', resumo: 'Acesso restabelecido após atualização das permissões do perfil.',
+    falas: [
+      ['CLIENTE', 'Troquei minha senha e agora não consigo entrar no portal.'],
+      ['CHATBOT', 'Entendi. Vou chamar um atendente para verificar seu acesso.'],
+      ['ATENDENTE', 'Olá, Beatriz! Vou conferir as permissões do seu perfil.'],
+      ['ATENDENTE', 'Ajustei as permissões. Pode tentar acessar novamente?'],
+      ['CLIENTE', 'Funcionou, obrigada!'],
+    ],
+  },
+  {
+    id: 'demo-hist-02', nome: 'Carlos Nunes', telefone: '81 99999-0202',
+    motivo: 'Dúvida sobre o prazo do chamado WXN-2026-0024', horasAtras: 28, duracaoMinutos: 42,
+    atendenteId: 'demo-paulo', resumo: 'Prazo confirmado e atualização enviada ao cliente.',
+    falas: [
+      ['CLIENTE', 'Queria saber quando o chamado WXN-2026-0024 será concluído.'],
+      ['CHATBOT', 'Vou encaminhar sua consulta para um atendente.'],
+      ['ATENDENTE', 'Olá, Carlos. Vou verificar o andamento com a equipe.'],
+      ['ATENDENTE', 'A previsão é concluir até sexta-feira. Registrei essa atualização no chamado.'],
+      ['CLIENTE', 'Certo, obrigado pelo retorno.'],
+    ],
+  },
+  {
+    id: 'demo-hist-03', nome: 'Renata Lima', telefone: '81 99999-0203',
+    motivo: 'Erro ao exportar relatório financeiro em PDF', horasAtras: 76, duracaoMinutos: 51,
+    atendenteId: 'demo-ana', resumo: 'Exportação normalizada após ajuste no modelo do relatório.',
+    falas: [
+      ['CLIENTE', 'O relatório financeiro não está exportando para PDF.'],
+      ['CHATBOT', 'Obrigada por avisar. Vou encaminhar o problema para a equipe.'],
+      ['ATENDENTE', 'Oi, Renata. Consegue me informar o período usado no relatório?'],
+      ['CLIENTE', 'Estou tentando exportar o mês passado.'],
+      ['ATENDENTE', 'Ajustamos o modelo. Fiz o teste com o mesmo período e a exportação foi concluída.'],
+    ],
+  },
+  {
+    id: 'demo-hist-04', nome: 'João Santos', telefone: '81 99999-0204',
+    motivo: 'Atualização dos dados de contato da empresa', horasAtras: 112, duracaoMinutos: 26,
+    atendenteId: 'demo-paulo', resumo: 'Dados de contato atualizados e confirmados com o cliente.',
+    falas: [
+      ['CLIENTE', 'Preciso atualizar o telefone da nossa empresa no cadastro.'],
+      ['CHATBOT', 'Vou chamar um atendente para fazer essa atualização com você.'],
+      ['ATENDENTE', 'Olá, João. Pode confirmar o novo telefone de contato?'],
+      ['CLIENTE', 'Sim, é o número que enviei no cadastro.'],
+      ['ATENDENTE', 'Atualização realizada. Obrigado pela confirmação!'],
+    ],
+  },
+];
+
+function montarExemploEncerrado(exemplo: (typeof exemplosEncerrados)[number]): HistoricoDetalhe {
+  const encerrada = criadoEm - exemplo.horasAtras * 3_600_000;
+  const iniciada = encerrada - exemplo.duracaoMinutos * 60_000;
+  const atendente = atendentes.find((item) => item.id === exemplo.atendenteId)!;
+  const mensagens = exemplo.falas.map(([tipoRemetente, conteudo], indice) => ({
+    tipoRemetente,
+    conteudo,
+    enviadaEm: new Date(iniciada + (indice + 1) * (encerrada - iniciada) / (exemplo.falas.length + 1)).toISOString(),
+  }));
+  return {
+    conversaId: exemplo.id,
+    clienteNome: exemplo.nome,
+    clienteTelefone: exemplo.telefone,
+    motivo: exemplo.motivo,
+    origem: 'SIMULADOR',
+    urgencia: 'BAIXA',
+    atendenteId: atendente.id,
+    atendenteNome: atendente.nome,
+    iniciadaEm: new Date(iniciada).toISOString(),
+    assumidaEm: new Date(iniciada + 7 * 60_000).toISOString(),
+    encerradaEm: new Date(encerrada).toISOString(),
+    resumoEncerramento: exemplo.resumo,
+    totalMensagens: mensagens.length,
+    mensagens,
+  };
+}
+
+const encerradas = new Map<string, HistoricoDetalhe>(
+  Object.entries(estado?.encerradas ?? {}).filter(([id, conversa]) =>
+    id === conversa?.conversaId &&
+    typeof conversa.clienteNome === 'string' &&
+    typeof conversa.encerradaEm === 'string' &&
+    Array.isArray(conversa.mensagens),
+  ),
+);
+for (const [id, conversa] of encerradas) {
+  if (conversa.origem === 'DEMONSTRACAO') encerradas.set(id, { ...conversa, origem: 'SIMULADOR' });
+}
+for (const exemplo of exemplosEncerrados) {
+  if (!encerradas.has(exemplo.id)) encerradas.set(exemplo.id, montarExemploEncerrado(exemplo));
+}
 const simuladas = new Map<string, ConversaDemoSimulada>(
   Object.entries(estado?.simuladas ?? {}).filter(([id, conversa]) =>
     id.startsWith('demo-sim-') &&
@@ -135,12 +239,13 @@ const simuladas = new Map<string, ConversaDemoSimulada>(
 const assumidas = new Map<string, VinculoDemo>(
   Object.entries(estado?.assumidas ?? {}).filter(([id, vinculo]) =>
     (cenarios.some((c) => c.id === id) || simuladas.has(id)) &&
+    !encerradas.has(id) &&
     atendentes.some((a) => a.id === vinculo?.atendenteId) &&
     typeof vinculo?.assumidaEm === 'number',
   ),
 );
 const aguardando = new Set([
-  ...cenarios.map((cenario) => cenario.id).filter((id) => !assumidas.has(id)),
+  ...cenarios.map((cenario) => cenario.id).filter((id) => !assumidas.has(id) && !encerradas.has(id)),
   ...[...simuladas.values()].filter((conversa) => conversa.status === 'AGUARDANDO_ATENDENTE' && !assumidas.has(conversa.id)).map((conversa) => conversa.id),
 ]);
 const respostas = new Map<string, MensagemResumo[]>(
@@ -153,6 +258,7 @@ function salvarEstado() {
       assumidas: Object.fromEntries(assumidas),
       respostas: Object.fromEntries(respostas),
       simuladas: Object.fromEntries(simuladas),
+      encerradas: Object.fromEntries(encerradas),
     } satisfies EstadoDemo));
   } catch {
     // A demonstração continua nesta página se o armazenamento estiver indisponível.
@@ -342,14 +448,50 @@ export function assumirDemoConversa(conversaId: string, atendenteId: string): 'o
   return 'ok';
 }
 
-export function encerrarDemoConversa(conversaId: string): boolean {
-  if (!assumidas.has(conversaId)) return false;
+export function encerrarDemoConversa(conversaId: string, resumoEncerramento?: string): boolean {
+  const vinculo = assumidas.get(conversaId);
+  if (!vinculo) return false;
+  const atendente = atendentes.find((item) => item.id === vinculo.atendenteId);
+  const simulada = simuladas.get(conversaId);
+  const cenario = cenarios.find((item) => item.id === conversaId);
+  if (!atendente || (!simulada && !cenario)) return false;
+  const detalhe = simulada ? detalheSimulada(simulada) : detalheDoCenario(cenario!);
+  if (cenario) detalhe.mensagens.push(...(respostas.get(conversaId) ?? []));
+  detalhe.mensagens.sort((a, b) => Date.parse(a.enviadaEm) - Date.parse(b.enviadaEm));
+  encerradas.set(conversaId, {
+    conversaId,
+    clienteNome: detalhe.clienteNome,
+    clienteTelefone: detalhe.clienteTelefone,
+    motivo: detalhe.motivo,
+    origem: detalhe.origem === 'DEMONSTRACAO' ? 'SIMULADOR' : detalhe.origem,
+    urgencia: simulada ? simulada.urgencia : urgenciaDoCenario(cenario!),
+    atendenteId: atendente.id,
+    atendenteNome: atendente.nome,
+    iniciadaEm: detalhe.abertoEm,
+    assumidaEm: new Date(vinculo.assumidaEm).toISOString(),
+    encerradaEm: new Date().toISOString(),
+    resumoEncerramento: resumoEncerramento?.trim() || null,
+    totalMensagens: detalhe.mensagens.length,
+    mensagens: detalhe.mensagens.map((mensagem) => ({ ...mensagem })),
+  });
   assumidas.delete(conversaId);
   respostas.delete(conversaId);
   simuladas.delete(conversaId);
   salvarEstado();
   avisarMudanca();
   return true;
+}
+
+/** Histórico local da prévia, da conversa encerrada mais recente para a mais antiga. */
+export function listarDemoHistorico(): HistoricoItem[] {
+  return [...encerradas.values()]
+    .sort((a, b) => Date.parse(b.encerradaEm) - Date.parse(a.encerradaEm))
+    .map(({ mensagens: _mensagens, ...conversa }) => ({ ...conversa }));
+}
+
+export function detalharDemoHistorico(conversaId: string): HistoricoDetalhe | null {
+  const conversa = encerradas.get(conversaId);
+  return conversa ? { ...conversa, mensagens: conversa.mensagens.map((mensagem) => ({ ...mensagem })) } : null;
 }
 
 /** Histórico completo de uma conversa em atendimento: falas do cenário mais as respostas enviadas. */
