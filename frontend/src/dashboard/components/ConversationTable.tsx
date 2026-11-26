@@ -72,7 +72,7 @@ function estadoVazio(
   return {
     icon: "users",
     title: "Nenhuma conversa em atendimento",
-    text: "As conversas que você assumir aparecem aqui até a página ser recarregada.",
+    text: "As conversas que você assumir aparecerão aqui para continuar de onde parou.",
   };
 }
 export function ConversationTable({
@@ -140,7 +140,7 @@ export function ConversationTable({
           motivo: a.detalhe.motivo,
           status: "active",
           rotulo: "Em atendimento",
-          tempo: `Assumida às ${hora(a.assumidaEm)}`,
+          tempo: a.assumidaEm ? `Assumida às ${hora(a.assumidaEm)}` : "Em atendimento",
           atendente: a.atendente.nome,
         }));
   const maxPages = Math.max(1, Math.ceil(linhas.length / PAGE_SIZE));
@@ -151,7 +151,7 @@ export function ConversationTable({
   );
   const tabs: Array<[Aba, string, number]> = [
     ["fila", "Aguardando", aguardando.length],
-    ["atendimento", "Em atendimento (nesta sessão)", ativas.length],
+    ["atendimento", "Em atendimento", ativas.length],
   ];
   const vazio = estadoVazio(aba, fila, erro, linhas.length, search);
 
@@ -162,13 +162,13 @@ export function ConversationTable({
           <h2>
             {aba === "fila"
               ? "Conversas aguardando"
-              : "Em atendimento nesta sessão"}{" "}
+              : "Em atendimento"}{" "}
             <span>{linhas.length}</span>
           </h2>
           <p>
             {aba === "fila"
               ? "Mais urgentes primeiro; entre iguais, quem pediu antes aparece primeiro."
-              : "Conversas que você assumiu desde que abriu esta página."}
+              : "Continue as conversas assumidas por você, mesmo após atualizar a página."}
           </p>
         </div>
         <button
@@ -177,7 +177,7 @@ export function ConversationTable({
           disabled={carregando}
         >
           <Icon name="refresh" />
-          Atualizar fila
+          {aba === "fila" ? "Atualizar fila" : "Atualizar conversas"}
         </button>
       </div>
       {erro && (

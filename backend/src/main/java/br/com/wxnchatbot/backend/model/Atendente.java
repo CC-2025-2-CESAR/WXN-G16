@@ -14,6 +14,9 @@ public class Atendente extends Pessoa {
 	@Column(name = "disponivel", nullable = false)
 	private boolean disponivel = true;
 
+	@Column(name = "senha_hash", length = 100)
+	private String senhaHash;
+
 	protected Atendente() {
 	}
 
@@ -32,6 +35,14 @@ public class Atendente extends Pessoa {
 
 	public boolean isDisponivel() {
 		return disponivel;
+	}
+
+	public String getSenhaHash() {
+		return senhaHash;
+	}
+
+	public void definirSenhaHash(String senhaHash) {
+		this.senhaHash = Validacao.textoObrigatorio(senhaHash, "senhaHash");
 	}
 
 	public void marcarDisponivel() {

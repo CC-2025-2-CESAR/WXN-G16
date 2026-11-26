@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -55,6 +56,14 @@ public class AtendimentoServico {
 		return conversa.getMensagens().stream().map(AtendimentoServico::resumir).toList();
 	}
 
+	@Transactional(readOnly = true)
+	public List<MensagemResumo> listarMensagens(UUID conversaId, UUID atendenteId) {
+		Conversa conversa = conversas.findById(conversaId)
+				.orElseThrow(() -> new RecursoNaoEncontradoException("Conversa", conversaId));
+		exigirResponsavel(conversa, atendenteId);
+		return conversa.getMensagens().stream().map(AtendimentoServico::resumir).toList();
+	}
+
 	/**
 	 * Grava a resposta do atendente que assumiu a conversa e a entrega ao cliente pelo canal dele.
 	 *
@@ -62,21 +71,34 @@ public class AtendimentoServico {
 	 * @throws IllegalStateException se a conversa não está em atendimento (ainda na fila, com a Lily ou encerrada)
 	 */
 	public ResultadoDoEnvio enviarMensagem(UUID conversaId, String texto) {
-		Gravada gravada = transacao.execute(status -> gravar(conversaId, texto));
+		Gravada gravada = transacao.execute(status -> gravar(conversaId, texto, null));
 		return entregar(gravada);
 	}
 
-	private Gravada gravar(UUID conversaId, String texto) {
+	public ResultadoDoEnvio enviarMensagem(UUID conversaId, String texto, UUID atendenteId) {
+		Gravada gravada = transacao.execute(status -> gravar(conversaId, texto, atendenteId));
+		return entregar(gravada);
+	}
+
+	private Gravada gravar(UUID conversaId, String texto, UUID atendenteId) {
 		Conversa conversa = conversas.buscarPorIdParaAtualizar(conversaId)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Conversa", conversaId));
 		if (conversa.getStatus() != StatusConversa.COM_ATENDENTE) {
 			throw new IllegalStateException(porQueNaoAceita(conversa.getStatus()));
 		}
+		if (atendenteId != null) exigirResponsavel(conversa, atendenteId);
 		Atendente atendente = conversa.getAtendente()
 				.orElseThrow(() -> new IllegalStateException("A conversa está em atendimento, mas sem atendente"));
 		Mensagem mensagem = conversa.adicionarMensagem(atendente, texto);
 		conversas.save(conversa);
 		return new Gravada(resumir(mensagem), conversa.getOrigem(), conversa.getCliente().getTelefone());
+	}
+
+	private static void exigirResponsavel(Conversa conversa, UUID atendenteId) {
+		if (conversa.getStatus() != StatusConversa.COM_ATENDENTE || conversa.getAtendente().isEmpty()
+				|| !conversa.getAtendente().orElseThrow().getId().equals(atendenteId)) {
+			throw new AccessDeniedException("Esta conversa pertence a outro atendente.");
+		}
 	}
 
 	private ResultadoDoEnvio entregar(Gravada gravada) {

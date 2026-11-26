@@ -2,6 +2,7 @@ package br.com.wxnchatbot.backend.controller;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,6 +14,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -22,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import br.com.wxnchatbot.backend.model.TipoRemetente;
+import br.com.wxnchatbot.backend.autenticacao.AtendenteAutenticado;
 import br.com.wxnchatbot.backend.service.AtendimentoServico;
 import br.com.wxnchatbot.backend.service.DetalheConversaFila.MensagemResumo;
 import br.com.wxnchatbot.backend.service.RecursoNaoEncontradoException;
@@ -31,6 +34,7 @@ import br.com.wxnchatbot.backend.service.ResultadoDoEnvio;
 class AtendimentoControllerTest {
 
 	private static final UUID CONVERSA = UUID.fromString("11111111-1111-1111-1111-111111111111");
+	private static final UUID ATENDENTE = UUID.fromString("22222222-2222-2222-2222-222222222222");
 	private static final Instant AGORA = Instant.parse("2026-11-19T12:00:00Z");
 
 	@Autowired
@@ -38,6 +42,13 @@ class AtendimentoControllerTest {
 
 	@MockitoBean
 	private AtendimentoServico servico;
+	@MockitoBean
+	private AtendenteAutenticado autenticado;
+
+	@BeforeEach
+	void prepararIdentidade() {
+		lenient().when(autenticado.id()).thenReturn(ATENDENTE);
+	}
 
 	private ResultActions enviar(String json) throws Exception {
 		return mvc.perform(post("/api/conversas/{id}/atendimento/mensagens", CONVERSA).contentType(MediaType.APPLICATION_JSON)
@@ -46,7 +57,7 @@ class AtendimentoControllerTest {
 
 	@Test
 	void historicoSaiEmOrdemComTipoConteudoEHora() throws Exception {
-		when(servico.listarMensagens(CONVERSA)).thenReturn(List.of(
+		when(servico.listarMensagens(CONVERSA, ATENDENTE)).thenReturn(List.of(
 				new MensagemResumo(TipoRemetente.CLIENTE, "Preciso de ajuda", AGORA),
 				new MensagemResumo(TipoRemetente.ATENDENTE, "Já vou ver", AGORA.plusSeconds(30))));
 
@@ -61,7 +72,7 @@ class AtendimentoControllerTest {
 
 	@Test
 	void historicoDeConversaInexistenteDevolve404() throws Exception {
-		when(servico.listarMensagens(CONVERSA)).thenThrow(new RecursoNaoEncontradoException("Conversa", CONVERSA));
+		when(servico.listarMensagens(CONVERSA, ATENDENTE)).thenThrow(new RecursoNaoEncontradoException("Conversa", CONVERSA));
 
 		mvc.perform(get("/api/conversas/{id}/atendimento/mensagens", CONVERSA)).andExpect(status().isNotFound());
 	}
@@ -75,7 +86,7 @@ class AtendimentoControllerTest {
 
 	@Test
 	void envioEntregueDevolveAMensagemEOAvisoNulo() throws Exception {
-		when(servico.enviarMensagem(CONVERSA, "Oi, sou o Carlos")).thenReturn(
+		when(servico.enviarMensagem(CONVERSA, "Oi, sou o Carlos", ATENDENTE)).thenReturn(
 				new ResultadoDoEnvio(new MensagemResumo(TipoRemetente.ATENDENTE, "Oi, sou o Carlos", AGORA), true, null));
 
 		enviar("{\"texto\":\"Oi, sou o Carlos\"}")
@@ -89,7 +100,7 @@ class AtendimentoControllerTest {
 
 	@Test
 	void envioNaoEntregueDevolve200ComOAviso() throws Exception {
-		when(servico.enviarMensagem(CONVERSA, "Oi")).thenReturn(new ResultadoDoEnvio(
+		when(servico.enviarMensagem(CONVERSA, "Oi", ATENDENTE)).thenReturn(new ResultadoDoEnvio(
 				new MensagemResumo(TipoRemetente.ATENDENTE, "Oi", AGORA), false, "O cliente bloqueou o bot"));
 
 		enviar("{\"texto\":\"Oi\"}")
@@ -113,17 +124,17 @@ class AtendimentoControllerTest {
 	@Test
 	void textoDeExatamente4000CaracteresEhAceito() throws Exception {
 		String texto = "a".repeat(4000);
-		when(servico.enviarMensagem(CONVERSA, texto)).thenReturn(
+		when(servico.enviarMensagem(CONVERSA, texto, ATENDENTE)).thenReturn(
 				new ResultadoDoEnvio(new MensagemResumo(TipoRemetente.ATENDENTE, texto, AGORA), true, null));
 
 		enviar("{\"texto\":\"" + texto + "\"}").andExpect(status().isOk());
 
-		verify(servico).enviarMensagem(CONVERSA, texto);
+		verify(servico).enviarMensagem(CONVERSA, texto, ATENDENTE);
 	}
 
 	@Test
 	void conversaForaDoAtendimentoDevolve409ComOMotivo() throws Exception {
-		when(servico.enviarMensagem(CONVERSA, "Oi")).thenThrow(new IllegalStateException("A conversa já foi encerrada"));
+		when(servico.enviarMensagem(CONVERSA, "Oi", ATENDENTE)).thenThrow(new IllegalStateException("A conversa já foi encerrada"));
 
 		enviar("{\"texto\":\"Oi\"}")
 				.andExpect(status().isConflict())
@@ -132,7 +143,7 @@ class AtendimentoControllerTest {
 
 	@Test
 	void envioParaConversaInexistenteDevolve404() throws Exception {
-		when(servico.enviarMensagem(CONVERSA, "Oi")).thenThrow(new RecursoNaoEncontradoException("Conversa", CONVERSA));
+		when(servico.enviarMensagem(CONVERSA, "Oi", ATENDENTE)).thenThrow(new RecursoNaoEncontradoException("Conversa", CONVERSA));
 
 		enviar("{\"texto\":\"Oi\"}").andExpect(status().isNotFound());
 	}

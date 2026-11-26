@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, type ChangeEvent, type FormEvent
 import { dia, formatarTelefone, hora } from '../dashboard/formato';
 import type { Cliente, EstadoDoEnvio, MensagemSimulada, StatusConversa } from './tipos';
 import type { ConversaSimulada } from './useConversaSimulada';
+import { DEMO_ATIVO } from '../services/api';
 
 const LIMITE_DO_TEXTO = 4000;
 const ALTURA_MAXIMA_DO_CAMPO = 120;
@@ -54,7 +55,7 @@ function Bolha({ mensagem, onReenviar, semEnviar }: BolhaProps) {
   const doCliente = mensagem.de === 'cliente';
   return (
     <div className={`sim-msg sim-msg--${mensagem.de}`}>
-      <span className="sim-sr">{doCliente ? 'Você: ' : 'Lily: '}</span>
+      <span className="sim-sr">{doCliente ? 'Você: ' : mensagem.de === 'atendente' ? 'Atendente: ' : 'Lily: '}</span>
       <span className="sim-texto">{mensagem.texto}</span>
       <span className="sim-meta">
         <time dateTime={new Date(mensagem.em).toISOString()}>{hora(mensagem.em)}</time>
@@ -136,7 +137,7 @@ export function Celular({ cliente, conversa }: Props) {
           L
         </span>
         <div className="sim-contato">
-          <strong>Lily · WXN</strong>
+          <strong>{status === 'COM_ATENDENTE' ? 'Atendimento · WXN' : 'Lily · WXN'}</strong>
           <small>{subtituloDoContato(status, enviando, lento)}</small>
         </div>
         <span className="sim-quem">
@@ -154,7 +155,9 @@ export function Celular({ cliente, conversa }: Props) {
         onScroll={aoRolar}
       >
         <div className="sim-aviso sim-aviso--simulador">
-          Simulador: as mensagens vão direto para a API da Lily, sem passar pelo WhatsApp.
+          {DEMO_ATIVO
+            ? 'Simulador: as mensagens e respostas são locais e não passam pelo WhatsApp.'
+            : 'Simulador: as mensagens vão direto para a API da Lily, sem passar pelo WhatsApp.'}
         </div>
         {mensagens.map((mensagem, i) => (
           <Fragment key={mensagem.id}>
@@ -191,7 +194,7 @@ export function Celular({ cliente, conversa }: Props) {
           value={rascunho}
           maxLength={LIMITE_DO_TEXTO}
           placeholder="Mensagem"
-          aria-label="Mensagem para a Lily"
+          aria-label={status === 'COM_ATENDENTE' ? 'Mensagem para o atendente' : 'Mensagem para a Lily'}
           onChange={aoDigitar}
           onKeyDown={aoTeclar}
         />

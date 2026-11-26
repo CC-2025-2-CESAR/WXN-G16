@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { listarFila, mensagemDoErro } from '../services/api';
+import { DEMO_ATIVO, listarFila, mensagemDoErro } from '../services/api';
 import type { ConversaNaFila } from '../types/fila';
 import { useAtualizacaoAutomatica } from './useAtualizacaoAutomatica';
 
@@ -45,6 +45,12 @@ export function useFila() {
     if (!emVoo.current) setBusca((n) => n + 1);
   }, []);
   useAtualizacaoAutomatica(emSegundoPlano, 15_000);
+
+  useEffect(() => {
+    if (!DEMO_ATIVO) return;
+    window.addEventListener('wxn:demo-conversations-changed', emSegundoPlano);
+    return () => window.removeEventListener('wxn:demo-conversations-changed', emSegundoPlano);
+  }, [emSegundoPlano]);
 
   return { itens, erro, carregando, atualizadoEm, recarregar };
 }

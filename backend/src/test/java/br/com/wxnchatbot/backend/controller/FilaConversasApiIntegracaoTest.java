@@ -1,5 +1,8 @@
 package br.com.wxnchatbot.backend.controller;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static br.com.wxnchatbot.backend.autenticacao.SessaoDeTeste.comoAtendente;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -150,12 +153,12 @@ class FilaConversasApiIntegracaoTest {
 	}
 
 	private ResultActions assumir(UUID conversaId, UUID atendenteId) throws Exception {
-		return mvc.perform(post("/api/fila/{id}/assumir", conversaId).contentType(MediaType.APPLICATION_JSON)
+		return mvc.perform(post("/api/fila/{id}/assumir", conversaId).with(user("equipe")).with(csrf()).with(comoAtendente(atendenteId)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"atendenteId\":\"" + atendenteId + "\"}"));
 	}
 
 	private List<ConversaNaFila> minhasNaFila() throws Exception {
-		String corpo = mvc.perform(get("/api/fila")).andExpect(status().isOk()).andReturn().getResponse()
+		String corpo = mvc.perform(get("/api/fila").with(user("equipe"))).andExpect(status().isOk()).andReturn().getResponse()
 				.getContentAsString(StandardCharsets.UTF_8);
 		return Arrays.stream(json.readValue(corpo, ConversaNaFila[].class))
 				.filter(item -> List.of(primeiraId, segundaId, comChatbotId).contains(item.conversaId())).toList();
@@ -176,7 +179,7 @@ class FilaConversasApiIntegracaoTest {
 		assertTrue(fila.get(0).abertoEm().isBefore(fila.get(1).abertoEm()));
 		assertEquals("João Pedro", fila.get(1).clienteNome());
 
-		String corpoDetalhe = mvc.perform(get("/api/fila/{id}", primeiraId)).andExpect(status().isOk()).andReturn()
+		String corpoDetalhe = mvc.perform(get("/api/fila/{id}", primeiraId).with(user("equipe"))).andExpect(status().isOk()).andReturn()
 				.getResponse().getContentAsString(StandardCharsets.UTF_8);
 		DetalheConversaFila detalhe = json.readValue(corpoDetalhe, DetalheConversaFila.class);
 		assertEquals("Maria Souza", detalhe.clienteNome());
@@ -185,8 +188,8 @@ class FilaConversasApiIntegracaoTest {
 				detalhe.mensagens().stream().map(DetalheConversaFila.MensagemResumo::tipoRemetente).toList());
 		assertEquals(List.of("Oi, sou a Lily!", "Preciso de ajuda com a nota"),
 				detalhe.mensagens().stream().map(DetalheConversaFila.MensagemResumo::conteudo).toList());
-		mvc.perform(get("/api/fila/{id}", comChatbotId)).andExpect(status().isConflict());
-		mvc.perform(get("/api/fila/{id}", UUID.randomUUID())).andExpect(status().isNotFound());
+		mvc.perform(get("/api/fila/{id}", comChatbotId).with(user("equipe"))).andExpect(status().isConflict());
+		mvc.perform(get("/api/fila/{id}", UUID.randomUUID()).with(user("equipe"))).andExpect(status().isNotFound());
 
 		assumir(primeiraId, indisponivelId).andExpect(status().isConflict());
 		assumir(primeiraId, UUID.randomUUID()).andExpect(status().isNotFound());
@@ -204,10 +207,10 @@ class FilaConversasApiIntegracaoTest {
 			assertEquals(disponivelId, ticket.getAtendente().orElseThrow().getId());
 		});
 		assertEquals(List.of(segundaId), minhasNaFila().stream().map(ConversaNaFila::conversaId).toList());
-		mvc.perform(get("/api/fila/{id}", primeiraId)).andExpect(status().isConflict());
+		mvc.perform(get("/api/fila/{id}", primeiraId).with(user("equipe"))).andExpect(status().isConflict());
 		assumir(primeiraId, outroDisponivelId).andExpect(status().isConflict());
 
-		mvc.perform(post("/api/conversas/{id}/encerrar", primeiraId)).andExpect(status().isNoContent())
+		mvc.perform(post("/api/conversas/{id}/encerrar", primeiraId).with(user("equipe")).with(csrf()).with(comoAtendente(disponivelId))).andExpect(status().isNoContent())
 				.andExpect(content().string(""));
 
 		transacao.executeWithoutResult(status -> {
@@ -218,16 +221,16 @@ class FilaConversasApiIntegracaoTest {
 			assertEquals(StatusTicket.RESOLVIDO, ticket.getStatus());
 			assertTrue(ticket.getResolvidoEm().isPresent());
 		});
-		mvc.perform(post("/api/conversas/{id}/encerrar", primeiraId)).andExpect(status().isConflict());
+		mvc.perform(post("/api/conversas/{id}/encerrar", primeiraId).with(user("equipe")).with(csrf()).with(comoAtendente(disponivelId))).andExpect(status().isConflict());
 		assumir(primeiraId, outroDisponivelId).andExpect(status().isConflict());
 		assertEquals(StatusConversa.ENCERRADA, lerConversa(primeiraId, Conversa::getStatus));
-		mvc.perform(post("/api/conversas/{id}/encerrar", UUID.randomUUID())).andExpect(status().isNotFound());
+		mvc.perform(post("/api/conversas/{id}/encerrar", UUID.randomUUID()).with(user("equipe")).with(csrf()).with(comoAtendente(disponivelId))).andExpect(status().isNotFound());
 		assertEquals(List.of(segundaId), minhasNaFila().stream().map(ConversaNaFila::conversaId).toList());
 	}
 
 	@Test
 	void atendentesVemOrdenadosPorNomeComADisponibilidade() throws Exception {
-		String corpo = mvc.perform(get("/api/atendentes")).andExpect(status().isOk()).andReturn().getResponse()
+		String corpo = mvc.perform(get("/api/atendentes").with(user("equipe"))).andExpect(status().isOk()).andReturn().getResponse()
 				.getContentAsString(StandardCharsets.UTF_8);
 
 		List<AtendenteResumo> meus = Arrays.stream(json.readValue(corpo, AtendenteResumo[].class))

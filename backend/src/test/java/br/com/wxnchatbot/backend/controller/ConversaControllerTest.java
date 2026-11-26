@@ -2,6 +2,7 @@ package br.com.wxnchatbot.backend.controller;
 
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -22,6 +24,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import br.com.wxnchatbot.backend.model.Cliente;
+import br.com.wxnchatbot.backend.autenticacao.AtendenteAutenticado;
 import br.com.wxnchatbot.backend.model.Conversa;
 import br.com.wxnchatbot.backend.model.StatusConversa;
 import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
@@ -32,6 +35,7 @@ import br.com.wxnchatbot.backend.service.RecursoNaoEncontradoException;
 class ConversaControllerTest {
 
 	private static final UUID CONVERSA = UUID.fromString("11111111-1111-1111-1111-111111111111");
+	private static final UUID ATENDENTE = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
 	@Autowired
 	private MockMvc mvc;
@@ -41,6 +45,13 @@ class ConversaControllerTest {
 
 	@MockitoBean
 	private ConversaRepositorio conversas;
+	@MockitoBean
+	private AtendenteAutenticado autenticado;
+
+	@BeforeEach
+	void prepararIdentidade() {
+		lenient().when(autenticado.id()).thenReturn(ATENDENTE);
+	}
 
 	@Test
 	void listarDevolveListaVaziaQuandoNaoHaConversas() throws Exception {
@@ -108,12 +119,23 @@ class ConversaControllerTest {
 				.andExpect(status().isNoContent())
 				.andExpect(content().string(""));
 
-		verify(servico).encerrar(CONVERSA);
+		verify(servico).encerrarComoAtendente(CONVERSA, ATENDENTE);
+	}
+
+	@Test
+	void encerrarAceitaResumoOpcional() throws Exception {
+		mvc.perform(post("/api/conversas/{id}/encerrar", CONVERSA)
+				.contentType("application/json")
+				.content("{\"resumoEncerramento\":\"Cliente orientado a refazer o relatório.\"}"))
+				.andExpect(status().isNoContent());
+
+		verify(servico).encerrarComoAtendente(CONVERSA, ATENDENTE,
+				"Cliente orientado a refazer o relatório.");
 	}
 
 	@Test
 	void encerrarConversaInexistenteDevolve404() throws Exception {
-		doThrow(new RecursoNaoEncontradoException("Conversa", CONVERSA)).when(servico).encerrar(CONVERSA);
+		doThrow(new RecursoNaoEncontradoException("Conversa", CONVERSA)).when(servico).encerrarComoAtendente(CONVERSA, ATENDENTE);
 
 		mvc.perform(post("/api/conversas/{id}/encerrar", CONVERSA))
 				.andExpect(status().isNotFound())
@@ -122,7 +144,7 @@ class ConversaControllerTest {
 
 	@Test
 	void encerrarConversaJaEncerradaDevolve409() throws Exception {
-		doThrow(new IllegalStateException("A conversa já está encerrada")).when(servico).encerrar(CONVERSA);
+		doThrow(new IllegalStateException("A conversa já está encerrada")).when(servico).encerrarComoAtendente(CONVERSA, ATENDENTE);
 
 		mvc.perform(post("/api/conversas/{id}/encerrar", CONVERSA))
 				.andExpect(status().isConflict())

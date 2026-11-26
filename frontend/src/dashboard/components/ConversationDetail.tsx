@@ -8,12 +8,13 @@ import {
 import { SeloDeOrigem } from "../../components/SeloDeOrigem";
 import { useDetalheFila } from "../../hooks/useDetalheFila";
 import { useMensagensDoAtendimento } from "../../hooks/useMensagensDoAtendimento";
-import { enviarMensagemDoAtendente, mensagemDoErro } from "../../services/api";
+import { DEMO_ATIVO, enviarMensagemDoAtendente, mensagemDoErro } from "../../services/api";
 import type {
   Atendente,
   ConversaNaFila,
   DetalheConversaFila,
   EmAtendimento,
+  MensagemResumo,
   TipoRemetente,
 } from "../../types/fila";
 import {
@@ -45,6 +46,7 @@ type Props = {
   onResolve: () => void;
   onSettings: () => void;
   onIndisponivel: () => void;
+  onMessageSent: (conversaId: string, mensagem: MensagemResumo) => void;
 };
 export function ConversationDetail({
   conversa,
@@ -57,6 +59,7 @@ export function ConversationDetail({
   onResolve,
   onSettings,
   onIndisponivel,
+  onMessageSent,
 }: Props) {
   const emAtendimento = atendimento !== undefined;
   const busca = useDetalheFila(
@@ -122,8 +125,9 @@ export function ConversationDetail({
       const resposta = await enviarMensagemDoAtendente(conversaId, conteudo);
       pertoDoFim.current = true;
       aoVivo.adicionar(resposta.mensagem);
+      onMessageSent(conversaId, resposta.mensagem);
       setTexto("");
-      if (!resposta.entregue)
+      if (!resposta.entregue && !DEMO_ATIVO)
         setFaixa({
           erro: false,
           texto:
@@ -162,7 +166,7 @@ export function ConversationDetail({
   const metadados = [
     ["Na fila desde", dataHora(c.abertoEm)],
     atendimento
-      ? ["Assumida às", hora(atendimento.assumidaEm)]
+      ? ["Assumida às", atendimento.assumidaEm ? hora(atendimento.assumidaEm) : "Horário indisponível"]
       : ["Aguardando há", esperaDesde(c.abertoEm, agora)],
     ["Mensagens", String(total ?? "—")],
     ["Última mensagem", ultima ? hora(ultima.enviadaEm) : "—"],

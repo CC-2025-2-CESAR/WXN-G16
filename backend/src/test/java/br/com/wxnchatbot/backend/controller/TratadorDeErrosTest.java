@@ -3,6 +3,7 @@ package br.com.wxnchatbot.backend.controller;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -16,14 +17,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.util.Assert;
 
+import br.com.wxnchatbot.backend.autenticacao.AtendenteAutenticado;
+import br.com.wxnchatbot.backend.service.AtendimentoServico;
 import br.com.wxnchatbot.backend.service.FilaConversasServico;
 import br.com.wxnchatbot.backend.service.RecursoNaoEncontradoException;
 
-@WebMvcTest(FilaConversasController.class)
+@WebMvcTest({ FilaConversasController.class, AtendimentoController.class })
+@WithMockUser
 class TratadorDeErrosTest {
 
 	private static final UUID CONVERSA = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -33,6 +38,12 @@ class TratadorDeErrosTest {
 
 	@MockitoBean
 	private FilaConversasServico servico;
+
+	@MockitoBean
+	private AtendimentoServico atendimento;
+
+	@MockitoBean
+	private AtendenteAutenticado autenticado;
 
 	@Test
 	void naoEncontradoVira404EmProblemDetailEmPortugues() throws Exception {
@@ -110,7 +121,8 @@ class TratadorDeErrosTest {
 
 	@Test
 	void corpoIlegivelVira400ComDetalheEmPortugues() throws Exception {
-		mvc.perform(post("/api/fila/{id}/assumir", CONVERSA).contentType(MediaType.APPLICATION_JSON).content("{"))
+		mvc.perform(post("/api/conversas/{id}/atendimento/mensagens", CONVERSA).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content("{"))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.title").value("Requisição inválida"))
@@ -120,10 +132,11 @@ class TratadorDeErrosTest {
 
 	@Test
 	void campoInvalidoVira400ComONomeDoCampo() throws Exception {
-		mvc.perform(post("/api/fila/{id}/assumir", CONVERSA).contentType(MediaType.APPLICATION_JSON).content("{}"))
+		mvc.perform(post("/api/conversas/{id}/atendimento/mensagens", CONVERSA).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content("{}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.detail").value("Dados inválidos: atendenteId é obrigatório"));
+				.andExpect(jsonPath("$.detail").value("Dados inválidos: texto é obrigatório"));
 	}
 
 	@Test
@@ -145,7 +158,8 @@ class TratadorDeErrosTest {
 
 	@Test
 	void tipoDeConteudoNaoSuportadoVira415EmPortugues() throws Exception {
-		mvc.perform(post("/api/fila/{id}/assumir", CONVERSA).contentType(MediaType.TEXT_PLAIN).content("x"))
+		mvc.perform(post("/api/conversas/{id}/atendimento/mensagens", CONVERSA).with(csrf())
+				.contentType(MediaType.TEXT_PLAIN).content("x"))
 				.andExpect(status().isUnsupportedMediaType())
 				.andExpect(jsonPath("$.title").value("Tipo de conteúdo não suportado"))
 				.andExpect(jsonPath("$.detail").value("Tipo de conteúdo não suportado"));

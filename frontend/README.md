@@ -16,12 +16,26 @@ Variáveis de ambiente: veja [`.env.example`](.env.example).
 
 ### Prévia local com conversas fictícias
 
-Com o Vite em execução, abra `http://localhost:5173/?demo=1` para testar a
-fila, o histórico e as ações de assumir e encerrar sem iniciar o backend. Esse
-modo funciona apenas no servidor de desenvolvimento e mostra um aviso de
-demonstração na tela. As alterações feitas nos exemplos ficam só na memória da
-página e são reiniciadas ao recarregar. Sem `?demo=1`, a tela continua usando a
-API real configurada em `VITE_API_URL`.
+Com o Vite em execução, abra `http://localhost:5173/?demo=1`. A prévia local
+aceita estas contas de teste:
+
+| Atendente | E-mail | Senha |
+| --- | --- | --- |
+| Ana Martins | `ana.martins@demo.wxn.example` | `Demo@2026` |
+| Paulo Mendes | `paulo.mendes@demo.wxn.example` | `Paulo@2026` |
+
+Elas permitem testar a fila, assumir conversas, responder e consultar o histórico sem
+iniciar o backend. São dados fictícios no navegador: nenhuma resposta é
+enviada a um cliente real. A sessão e os atendimentos de exemplo ficam no
+`sessionStorage` da aba e sobrevivem a uma atualização da página. Sem
+`?demo=1`, o funcionário entra com seu próprio e-mail e senha, validados pela
+API real em `VITE_API_URL`. A tela não permite escolher a identidade de outro
+funcionário.
+
+No modo `?demo=1`, o simulador de WhatsApp responde com mensagens locais e
+permite encaminhar uma conversa nova para a fila da prévia. Essas respostas não
+usam a Lily real nem chegam ao WhatsApp. Sem `?demo=1`, o simulador conversa
+com a API do backend e requer uma sessão real de funcionário.
 
 ## Tela de atendimento
 
@@ -31,26 +45,35 @@ que precisa estar no ar e com o CORS liberado para a origem do Vite.
 
 | O que a tela faz | Endpoint |
 | --- | --- |
+| Entrar e manter sessão de funcionário | `GET /api/auth/csrf`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout` |
 | Carregar a fila: ao abrir, no botão "Atualizar fila" e a cada 15 s (só com a aba visível) | `GET /api/fila` |
 | Abrir uma conversa da fila | `GET /api/fila/{conversaId}` |
-| Assumir uma conversa | `POST /api/fila/{conversaId}/assumir` com `{ "atendenteId": "..." }` |
-| Encerrar uma conversa assumida | `POST /api/conversas/{conversaId}/encerrar` |
-| Listar os atendentes | `GET /api/atendentes` |
+| Assumir uma conversa como funcionário autenticado | `POST /api/fila/{conversaId}/assumir` |
+| Retomar as conversas do funcionário após recarregar | `GET /api/atendimentos/ativos` |
+| Ver histórico e responder ao cliente | `GET/POST /api/conversas/{conversaId}/atendimento/mensagens` |
+| Encerrar uma conversa assumida, com resumo opcional | `POST /api/conversas/{conversaId}/encerrar` |
+| Consultar conversas encerradas, com busca, filtros e paginação | `GET /api/historico` |
+| Ler uma conversa encerrada e suas mensagens | `GET /api/historico/{conversaId}` |
 | Mostrar o status do backend na lateral | `GET /api/health` |
 
 Quando o servidor recusa uma operação, a tela mostra o campo `detail` da
 resposta de erro (RFC 9457) e recarrega a fila. Se a conversa aberta já saiu da
 fila (404 ou 409), o painel avisa e a fila é recarregada.
 
-- **Atendendo como**: o atendente é escolhido em Configurações (ou pelo perfil
-  na lateral) e fica salvo no `localStorage` do navegador. Sem essa escolha não
-  dá para assumir conversas. Atendentes indisponíveis aparecem marcados e o
-  servidor recusa a atribuição.
-- **Em atendimento (nesta sessão)**: as conversas assumidas ficam nessa lista
-  só na memória da página. Ao recarregar, elas saem da tela, mas continuam em
-  atendimento no servidor.
-- **Ainda não existe**: histórico (item "Em breve" no menu), envio de mensagens
-  e transferência, porque o backend ainda não tem esses recursos.
+- **Acesso da equipe**: o backend cria uma sessão protegida por cookie `HttpOnly`
+  e CSRF. Veja [como provisionar contas](../docs/autenticacao-atendentes.md).
+- **Em atendimento**: o menu lateral abre as conversas atribuídas ao funcionário
+  autenticado. A lista é recuperada do servidor após recarregar. Ao selecionar
+  um cliente, abre-se uma área de conversa no centro da tela, com histórico,
+  respostas e acesso às outras conversas do atendente.
+- **Entrega da resposta**: a API informa se a mensagem chegou ao canal do
+  cliente. Se ela foi apenas salva no histórico, a tela mostra um aviso.
+- **Histórico**: o menu lateral reúne conversas encerradas. É possível buscar
+  por cliente, telefone, assunto, resumo e texto das mensagens; filtrar por
+  período, atendente e canal; e abrir o atendimento completo em leitura. A
+  tecla `/` foca a busca. O resumo opcional escrito ao encerrar também aparece
+  nessa página.
+- **Ainda em breve**: transferência de atendimento.
 
 ## Estrutura de `src`
 
