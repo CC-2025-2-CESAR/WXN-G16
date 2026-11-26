@@ -36,6 +36,8 @@ export default function App() {
     if (tempoMinimo.current) setEmTransicao(false)
   }, [])
   const iniciarEntrada = (perfil: Atendente) => {
+    window.history.replaceState(window.history.state, '', '#/')
+    setRota('fila')
     painelPronto.current = false
     tempoMinimo.current = false
     setEmTransicao(true)
