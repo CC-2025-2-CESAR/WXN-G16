@@ -1,4 +1,4 @@
-export type Remetente = 'cliente' | 'lily' | 'sistema';
+export type Remetente = 'cliente' | 'lily' | 'atendente' | 'sistema';
 
 export type StatusConversa = 'COM_CHATBOT' | 'AGUARDANDO_ATENDENTE' | 'COM_ATENDENTE' | 'ENCERRADA';
 

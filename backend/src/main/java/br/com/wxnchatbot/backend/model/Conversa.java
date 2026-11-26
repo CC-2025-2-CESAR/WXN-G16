@@ -62,6 +62,12 @@ public class Conversa {
 	@Column(name = "encerrada_em")
 	private Instant encerradaEm;
 
+	@Column(name = "resumo_encerramento", length = 1000)
+	private String resumoEncerramento;
+
+	@Column(name = "assumida_em")
+	private Instant assumidaEm;
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "origem", nullable = false)
 	private OrigemConversa origem = OrigemConversa.DEMONSTRACAO;
@@ -123,16 +129,26 @@ public class Conversa {
 		}
 		this.atendente = atendente;
 		this.status = StatusConversa.COM_ATENDENTE;
+		this.assumidaEm = Instant.now();
 		ticket.iniciarAtendimento(atendente);
 	}
 
 	public void encerrar() {
+		encerrar(null);
+	}
+
+	public void encerrar(String resumoEncerramento) {
 		if (status == StatusConversa.ENCERRADA) {
 			throw new IllegalStateException("A conversa já está encerrada");
+		}
+		String resumo = resumoEncerramento == null ? null : resumoEncerramento.strip();
+		if (resumo != null && resumo.length() > 1000) {
+			throw new IllegalArgumentException("O resumo do encerramento deve ter até 1000 caracteres");
 		}
 		if (ticket != null) {
 			ticket.resolver();
 		}
+		this.resumoEncerramento = resumo == null || resumo.isEmpty() ? null : resumo;
 		this.status = StatusConversa.ENCERRADA;
 		this.encerradaEm = Instant.now();
 	}
@@ -191,6 +207,14 @@ public class Conversa {
 
 	public Optional<Instant> getEncerradaEm() {
 		return Optional.ofNullable(encerradaEm);
+	}
+
+	public Optional<String> getResumoEncerramento() {
+		return Optional.ofNullable(resumoEncerramento);
+	}
+
+	public Optional<Instant> getAssumidaEm() {
+		return Optional.ofNullable(assumidaEm);
 	}
 	
 	public Empresa getEmpresa() {

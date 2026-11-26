@@ -1,5 +1,8 @@
 package br.com.wxnchatbot.backend.controller;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static br.com.wxnchatbot.backend.autenticacao.SessaoDeTeste.comoAtendente;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -124,7 +127,7 @@ class ChatFluxoIntegracaoTest {
 	}
 
 	private RespostaChat enviar(String telefone, String texto) throws Exception {
-		String corpo = mvc.perform(post("/api/chat/mensagens").contentType(MediaType.APPLICATION_JSON)
+		String corpo = mvc.perform(post("/api/chat/mensagens").with(csrf()).with(user("equipe")).contentType(MediaType.APPLICATION_JSON)
 				.content(json.writeValueAsString(Map.of("telefone", telefone, "nome", "Teste do Chat", "texto", texto))))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 		return json.readValue(corpo, RespostaChat.class);
@@ -234,7 +237,7 @@ class ChatFluxoIntegracaoTest {
 			return null;
 		});
 
-		String corpoFila = mvc.perform(get("/api/fila")).andExpect(status().isOk()).andReturn().getResponse()
+		String corpoFila = mvc.perform(get("/api/fila").with(user("equipe"))).andExpect(status().isOk()).andReturn().getResponse()
 				.getContentAsString(StandardCharsets.UTF_8);
 		List<ConversaNaFila> minhas = Arrays.stream(json.readValue(corpoFila, ConversaNaFila[].class))
 				.filter(item -> item.conversaId().equals(conversaId)).toList();
@@ -247,7 +250,7 @@ class ChatFluxoIntegracaoTest {
 			em.persist(atendente);
 			return atendente.getId();
 		});
-		mvc.perform(post("/api/fila/{id}/assumir", conversaId).contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/fila/{id}/assumir", conversaId).with(user("equipe")).with(csrf()).with(comoAtendente(atendenteId)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"atendenteId\":\"" + atendenteId + "\"}")).andExpect(status().isNoContent());
 
 		RespostaChat comAtendente = enviar(TELEFONE, "Obrigado por assumir");
@@ -260,7 +263,7 @@ class ChatFluxoIntegracaoTest {
 			return mensagens.get(mensagens.size() - 1).getTipoRemetente();
 		}));
 
-		mvc.perform(post("/api/conversas/{id}/encerrar", conversaId)).andExpect(status().isNoContent());
+		mvc.perform(post("/api/conversas/{id}/encerrar", conversaId).with(user("equipe")).with(csrf()).with(comoAtendente(atendenteId))).andExpect(status().isNoContent());
 
 		RespostaChat nova = enviar(TELEFONE, "Oi de novo");
 		assertNotEquals(conversaId, nova.conversaId());
@@ -271,7 +274,7 @@ class ChatFluxoIntegracaoTest {
 	void mensagemNumaConversaExistentePeloIdTambemFunciona() throws Exception {
 		UUID conversaId = enviar(TELEFONE, "Oi").conversaId();
 
-		String corpo = mvc.perform(post("/api/conversas/{id}/mensagens", conversaId).contentType(MediaType.APPLICATION_JSON)
+		String corpo = mvc.perform(post("/api/conversas/{id}/mensagens", conversaId).with(csrf()).with(user("equipe")).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"texto\":\"Tudo bem?\"}")).andExpect(status().isOk()).andReturn().getResponse()
 				.getContentAsString(StandardCharsets.UTF_8);
 		RespostaChat resposta = json.readValue(corpo, RespostaChat.class);
@@ -283,7 +286,7 @@ class ChatFluxoIntegracaoTest {
 
 	@Test
 	void conversaInexistenteDevolve404() throws Exception {
-		mvc.perform(post("/api/conversas/{id}/mensagens", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/conversas/{id}/mensagens", UUID.randomUUID()).with(csrf()).with(user("equipe")).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"texto\":\"Oi\"}")).andExpect(status().isNotFound());
 	}
 }

@@ -1,5 +1,7 @@
 package br.com.wxnchatbot.backend.canal.telegram;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static br.com.wxnchatbot.backend.autenticacao.SessaoDeTeste.comoAtendente;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -160,14 +162,14 @@ class RespostaDoAtendentePeloTelegramIntegracaoTest {
 
 	private UUID conversaEmAtendimento() throws Exception {
 		UUID conversa = conversaNaFila();
-		mvc.perform(post("/api/fila/{id}/assumir", conversa).contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/fila/{id}/assumir", conversa).with(csrf()).with(comoAtendente(atendenteId)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"atendenteId\":\"" + atendenteId + "\"}")).andExpect(status().isNoContent());
 		assertEquals(StatusConversa.COM_ATENDENTE, statusNoBanco(conversa));
 		return conversa;
 	}
 
 	private ResultActions responder(UUID conversa, String texto) throws Exception {
-		return mvc.perform(post("/api/conversas/{id}/atendimento/mensagens", conversa).contentType(MediaType.APPLICATION_JSON)
+		return mvc.perform(post("/api/conversas/{id}/atendimento/mensagens", conversa).with(csrf()).with(comoAtendente(atendenteId)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"texto\":\"" + texto + "\"}"));
 	}
 
@@ -183,7 +185,7 @@ class RespostaDoAtendentePeloTelegramIntegracaoTest {
 				.andExpect(jsonPath("$.mensagem.conteudo").value("Oi, sou o Carlos. Como posso ajudar?"));
 
 		verify(telegram).enviarTexto(CHAT, "Oi, sou o Carlos. Como posso ajudar?");
-		mvc.perform(get("/api/conversas/{id}/atendimento/mensagens", conversa))
+		mvc.perform(get("/api/conversas/{id}/atendimento/mensagens", conversa).with(comoAtendente(atendenteId)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(3))
 				.andExpect(jsonPath("$[0].tipoRemetente").value("CLIENTE"))
@@ -203,7 +205,7 @@ class RespostaDoAtendentePeloTelegramIntegracaoTest {
 		esperarAteHaMensagens(conversa, 4);
 		verify(telegram, after(700).never()).enviarTexto(anyLong(), anyString());
 		assertEquals(StatusConversa.COM_ATENDENTE, statusNoBanco(conversa));
-		mvc.perform(get("/api/conversas/{id}/atendimento/mensagens", conversa))
+		mvc.perform(get("/api/conversas/{id}/atendimento/mensagens", conversa).with(comoAtendente(atendenteId)))
 				.andExpect(jsonPath("$[3].tipoRemetente").value("CLIENTE"))
 				.andExpect(jsonPath("$[3].conteudo").value("É o WXN-2026-0001"));
 	}
@@ -221,7 +223,7 @@ class RespostaDoAtendentePeloTelegramIntegracaoTest {
 				.andExpect(jsonPath("$.mensagem.conteudo").value("Está aí?"));
 
 		assertEquals(3, mensagensNoBanco(conversa));
-		mvc.perform(get("/api/conversas/{id}/atendimento/mensagens", conversa))
+		mvc.perform(get("/api/conversas/{id}/atendimento/mensagens", conversa).with(comoAtendente(atendenteId)))
 				.andExpect(jsonPath("$[2].conteudo").value("Está aí?"));
 	}
 
@@ -238,7 +240,7 @@ class RespostaDoAtendentePeloTelegramIntegracaoTest {
 	@Test
 	void conversaEncerradaNaoAceitaMaisRespostas() throws Exception {
 		UUID conversa = conversaEmAtendimento();
-		mvc.perform(post("/api/conversas/{id}/encerrar", conversa)).andExpect(status().isNoContent());
+		mvc.perform(post("/api/conversas/{id}/encerrar", conversa).with(csrf()).with(comoAtendente(atendenteId))).andExpect(status().isNoContent());
 
 		responder(conversa, "Mais uma coisa").andExpect(status().isConflict());
 
@@ -249,6 +251,6 @@ class RespostaDoAtendentePeloTelegramIntegracaoTest {
 	@Test
 	void conversaInexistenteDevolve404() throws Exception {
 		responder(UUID.randomUUID(), "Oi").andExpect(status().isNotFound());
-		mvc.perform(get("/api/conversas/{id}/atendimento/mensagens", UUID.randomUUID())).andExpect(status().isNotFound());
+		mvc.perform(get("/api/conversas/{id}/atendimento/mensagens", UUID.randomUUID()).with(comoAtendente(atendenteId))).andExpect(status().isNotFound());
 	}
 }

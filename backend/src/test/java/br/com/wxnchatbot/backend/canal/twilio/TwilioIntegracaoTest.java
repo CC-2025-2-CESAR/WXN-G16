@@ -1,5 +1,7 @@
 package br.com.wxnchatbot.backend.canal.twilio;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static br.com.wxnchatbot.backend.autenticacao.SessaoDeTeste.comoAtendente;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -162,14 +164,14 @@ class TwilioIntegracaoTest {
 		verify(twilio, timeout(10_000)).enviarTexto(eq(DE), contains("atendente"));
 		UUID conversa = conversaDoCliente().getId();
 		assertEquals(StatusConversa.AGUARDANDO_ATENDENTE, conversaDoCliente().getStatus());
-		mvc.perform(post("/api/fila/{id}/assumir", conversa).contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/fila/{id}/assumir", conversa).with(csrf()).with(comoAtendente(atendenteId)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"atendenteId\":\"" + atendenteId + "\"}")).andExpect(status().isNoContent());
 		clearInvocations(twilio);
 		return conversa;
 	}
 
 	private ResultActions atendenteResponde(UUID conversa, String texto) throws Exception {
-		return mvc.perform(post("/api/conversas/{id}/atendimento/mensagens", conversa).contentType(MediaType.APPLICATION_JSON)
+		return mvc.perform(post("/api/conversas/{id}/atendimento/mensagens", conversa).with(csrf()).with(comoAtendente(atendenteId)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"texto\":\"" + texto + "\"}"));
 	}
 

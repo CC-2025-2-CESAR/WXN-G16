@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,6 +29,11 @@ public class TratadorDeErros extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(RecursoNaoEncontradoException.class)
 	public ProblemDetail recursoNaoEncontrado(RecursoNaoEncontradoException e) {
 		return problema(HttpStatus.NOT_FOUND, e.getMessage());
+	}
+
+	@ExceptionHandler(AccessDeniedException.class)
+	public ProblemDetail acessoNegado(AccessDeniedException e) {
+		return problema(HttpStatus.FORBIDDEN, "Você não tem acesso a esta conversa.");
 	}
 
 	@ExceptionHandler({ IllegalStateException.class, IllegalArgumentException.class })

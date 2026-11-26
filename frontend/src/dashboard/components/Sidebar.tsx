@@ -1,24 +1,35 @@
 import { StatusBadge } from "../../components/StatusBadge";
 import type { BackendStatus } from "../../hooks/useBackendHealth";
 import type { Atendente } from "../../types/fila";
+import type { Aba } from "./ConversationTable";
 import { iniciais } from "../formato";
 import { Icon } from "../icons";
 
 type Props = {
   count: number | undefined;
-  atendente: Atendente | null;
+  activeCount: number;
+  activePage: Aba | 'historico';
+  atendente: Atendente;
   backend: BackendStatus;
   demo: boolean;
   onHome: () => void;
+  onAtendimento: () => void;
+  onHistorico: () => void;
   onSettings: () => void;
+  onLogout: () => void;
 };
 export function Sidebar({
   count,
+  activeCount,
+  activePage,
   atendente,
   backend,
   demo,
   onHome,
+  onAtendimento,
+  onHistorico,
   onSettings,
+  onLogout,
 }: Props) {
   return (
     <aside className="sidebar" aria-label="Navegação principal">
@@ -47,8 +58,8 @@ export function Sidebar({
       <nav>
         <button
           title="Fila de conversas"
-          className="nav-item active"
-          aria-current="page"
+          className={`nav-item ${activePage === "fila" ? "active" : ""}`}
+          aria-current={activePage === "fila" ? "page" : undefined}
           onClick={onHome}
         >
           <Icon name="inbox" />
@@ -56,7 +67,7 @@ export function Sidebar({
           <b>{count ?? "—"}</b>
         </button>
         <button
-          title="Simulador de WhatsApp (teste da Lily)"
+          title="Simulador de WhatsApp"
           className="nav-item"
           onClick={() => {
             window.location.hash = "#/simulador";
@@ -65,10 +76,24 @@ export function Sidebar({
           <Icon name="messages" />
           <span>Simulador de chat</span>
         </button>
-        <button title="Histórico (em breve)" className="nav-item" disabled>
+        <button
+          title="Suas conversas em atendimento"
+          className={`nav-item ${activePage === "atendimento" ? "active" : ""}`}
+          aria-current={activePage === "atendimento" ? "page" : undefined}
+          onClick={onAtendimento}
+        >
+          <Icon name="users" />
+          <span>Em atendimento</span>
+          <b>{activeCount}</b>
+        </button>
+        <button
+          title="Histórico de conversas"
+          className={`nav-item ${activePage === 'historico' ? 'active' : ''}`}
+          aria-current={activePage === 'historico' ? 'page' : undefined}
+          onClick={onHistorico}
+        >
           <Icon name="history" />
           <span>Histórico</span>
-          <b>Em breve</b>
         </button>
         <button title="Configurações" className="nav-item" onClick={onSettings}>
           <Icon name="settings" />
@@ -83,37 +108,29 @@ export function Sidebar({
           <strong>Lily está por aqui</strong>
           <p>Sua assistente virtual cuida das primeiras respostas.</p>
         </div>
-        <div className="environment">
-          {demo ? (
-            <span className="status-badge status-badge--demo">
-              <span className="status-badge__dot" aria-hidden="true" />
-              Modo demonstração
-            </span>
-          ) : <StatusBadge status={backend} />}
-        </div>
+        {!demo && (
+          <div className="environment">
+            <StatusBadge status={backend} />
+          </div>
+        )}
         <button
           className="sidebar-profile"
           onClick={onSettings}
-          aria-label={
-            atendente
-              ? `Configurações de ${atendente.nome}`
-              : "Escolher o atendente"
-          }
+          aria-label={`Configurações de ${atendente.nome}`}
         >
           <span className="avatar profile-avatar">
-            {atendente ? iniciais(atendente.nome) : "?"}
+            {iniciais(atendente.nome)}
           </span>
           <span>
-            {atendente?.nome ?? "Atendente"}
+            {atendente.nome}
             <small>
-              {atendente
-                ? atendente.disponivel
-                  ? "Disponível"
-                  : "Indisponível"
-                : "Não escolhido"}
+              {atendente.disponivel ? "Disponível" : "Indisponível"}
             </small>
           </span>
           <Icon name="chevron-right" />
+        </button>
+        <button className="sidebar-signout" onClick={onLogout}>
+          <Icon name="sign-out" /> Sair do workspace
         </button>
       </div>
     </aside>

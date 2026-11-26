@@ -2,8 +2,9 @@
 
 Uma tela que imita o WhatsApp para conversar com a Lily sem depender da Meta (tarefa FE-03 do
 [`backlog-implementacao.md`](backlog-implementacao.md)). O cliente "escreve" num celular desenhado na tela e a Lily
-responde, passando pelo mesmo caminho que o canal real usará: `POST /api/chat/mensagens` (veja
-[`chatbot-lily.md`](chatbot-lily.md)). O código está em `frontend/src/simulador`.
+responde. Com o backend ativo, as mensagens passam por `POST /api/chat/mensagens` (veja
+[`chatbot-lily.md`](chatbot-lily.md)); na prévia local, as respostas são simuladas no navegador. O código está em
+`frontend/src/simulador`.
 
 Serve para testar a Lily, ensaiar a demonstração e ver a conversa cair na fila de atendimento. Não serve para testar a
 Meta: o webhook, a assinatura e o envio real continuam descritos em [`whatsapp.md`](whatsapp.md), e o número de teste da
@@ -29,8 +30,12 @@ Meta não entrega para o Brasil.
    npm run dev
    ```
 
-3. Abra `http://localhost:5173/#/simulador`. Na fila de atendimento, o botão **Simulador de chat** do menu leva para
-   a mesma tela, e **← Fila de atendimento** volta.
+3. Entre com uma conta de funcionário e abra `http://localhost:5173/#/simulador`. Na fila de atendimento, o botão
+   **Simulador de chat** do menu leva para a mesma tela, e **← Fila de atendimento** volta.
+
+Para testar sem backend, abra `http://localhost:5173/?demo=1#/simulador` e entre com uma conta de teste descrita no
+[README do frontend](../frontend/README.md). Nesse modo as respostas são locais e simuladas; pedir um atendente
+adiciona a conversa à fila da prévia. O modo demo não testa a API real nem a Lily com Gemini.
 
 A API de chat só existe com `chat.api.habilitada=true` (perfil `dev`, ou `CHAT_API_HABILITADA=true`). Se estiver
 desligada, a tela avisa. No Azure ela fica desligada em `prod`; ligue só para uma demonstração.
@@ -57,11 +62,10 @@ backend com `CHATBOT_LLM=gemini` e a chave em `GEMINI_API_KEY` (veja `docs/chatb
 - **A tela não busca o histórico no servidor.** As mensagens ficam no `localStorage` do navegador, por telefone, e voltam
   ao recarregar a página. **Limpar a tela** apaga só essa cópia; a conversa no servidor continua, então para recomeçar
   use **Cliente novo**.
-- **As respostas do atendente não chegam ao celular.** O backend ainda não envia a resposta do atendente ao canal
-  (mesma limitação do WhatsApp real, veja `whatsapp.md`). Depois do encaminhamento, a Lily fica calada e a tela só avisa
-  que a mensagem foi registrada.
+- **Com a API real, as respostas do atendente não chegam ao celular.** O backend ainda não envia a resposta do
+  atendente ao canal (mesma limitação do WhatsApp real, veja `whatsapp.md`). Na prévia local, ao voltar ao simulador,
+  as respostas do atendente aparecem na conversa.
 - Só texto, até 4000 caracteres por mensagem.
-- Não há autenticação: qualquer pessoa que alcance a API de chat pode simular um cliente. Por isso ela fica desligada em
-  produção.
+- A API de chat exige uma sessão de funcionário e fica desligada por padrão em produção.
 - Não há testes automatizados do frontend ainda (tarefa FE-09); a tela foi verificada à mão, no navegador, contra um
   backend real.

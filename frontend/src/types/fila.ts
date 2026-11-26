@@ -53,5 +53,5 @@ export interface Atendente {
 export interface EmAtendimento {
   detalhe: DetalheConversaFila;
   atendente: Atendente;
-  assumidaEm: number;
+  assumidaEm: number | null;
 }

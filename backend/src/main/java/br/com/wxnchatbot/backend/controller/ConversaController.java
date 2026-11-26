@@ -7,11 +7,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import br.com.wxnchatbot.backend.repository.ConversaRepositorio;
+import br.com.wxnchatbot.backend.autenticacao.AtendenteAutenticado;
 import br.com.wxnchatbot.backend.service.FilaConversasServico;
 
 @RestController
@@ -20,10 +22,13 @@ public class ConversaController {
 
 	private final FilaConversasServico servico;
 	private final ConversaRepositorio conversas;
+	private final AtendenteAutenticado atendenteAutenticado;
 
-	public ConversaController(FilaConversasServico servico, ConversaRepositorio conversas) {
+	public ConversaController(FilaConversasServico servico, ConversaRepositorio conversas,
+			AtendenteAutenticado atendenteAutenticado) {
 		this.servico = servico;
 		this.conversas = conversas;
+		this.atendenteAutenticado = atendenteAutenticado;
 	}
 
 	@GetMapping
@@ -42,7 +47,14 @@ public class ConversaController {
 
 	@PostMapping("/{conversaId}/encerrar")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void encerrar(@PathVariable UUID conversaId) {
-		servico.encerrar(conversaId);
+	public void encerrar(@PathVariable UUID conversaId, @RequestBody(required = false) EncerrarConversaRequisicao requisicao) {
+		if (requisicao == null) {
+			servico.encerrarComoAtendente(conversaId, atendenteAutenticado.id());
+		} else {
+			servico.encerrarComoAtendente(conversaId, atendenteAutenticado.id(), requisicao.resumoEncerramento());
+		}
+	}
+
+	public record EncerrarConversaRequisicao(String resumoEncerramento) {
 	}
 }

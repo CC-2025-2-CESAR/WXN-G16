@@ -3,6 +3,7 @@ package br.com.wxnchatbot.backend.controller;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 import br.com.wxnchatbot.backend.model.NivelUrgencia;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -26,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import br.com.wxnchatbot.backend.model.TipoRemetente;
+import br.com.wxnchatbot.backend.autenticacao.AtendenteAutenticado;
 import br.com.wxnchatbot.backend.model.OrigemConversa;
 import br.com.wxnchatbot.backend.service.ConversaNaFila;
 import br.com.wxnchatbot.backend.service.DetalheConversaFila;
@@ -46,6 +49,13 @@ class FilaConversasControllerTest {
 
 	@MockitoBean
 	private FilaConversasServico servico;
+	@MockitoBean
+	private AtendenteAutenticado autenticado;
+
+	@BeforeEach
+	void prepararIdentidade() {
+		lenient().when(autenticado.id()).thenReturn(ATENDENTE);
+	}
 
 	private ResultActions assumir(String conversaId, String json) throws Exception {
 		return mvc.perform(post("/api/fila/{id}/assumir", conversaId).contentType(MediaType.APPLICATION_JSON).content(json));
@@ -184,25 +194,18 @@ class FilaConversasControllerTest {
 	}
 
 	@Test
-	void assumirSemCorpoDevolve400() throws Exception {
-		mvc.perform(post("/api/fila/{id}/assumir", CONVERSA).contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().isBadRequest());
-		mvc.perform(post("/api/fila/{id}/assumir", CONVERSA))
-				.andExpect(status().isBadRequest());
-
-		verifyNoInteractions(servico);
+	void assumirUsaSessaoMesmoSeClienteEnviarOutroIdNoCorpo() throws Exception {
+		UUID outro = UUID.randomUUID();
+		assumir(CONVERSA.toString(), "{\"atendenteId\":\"" + outro + "\"}")
+				.andExpect(status().isNoContent());
+		verify(servico).atribuirAtendente(CONVERSA, ATENDENTE);
 	}
 
 	@Test
-	void assumirComCorpoInvalidoDevolve400() throws Exception {
-		assumir(CONVERSA.toString(), "{}").andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.detail").value(containsString("atendenteId")));
-		assumir(CONVERSA.toString(), "{\"atendenteId\":null}").andExpect(status().isBadRequest());
-		assumir(CONVERSA.toString(), "{\"atendenteId\":\"nao-e-uuid\"}").andExpect(status().isBadRequest());
-		assumir(CONVERSA.toString(), "{\"atendenteId\":").andExpect(status().isBadRequest());
-		assumir(CONVERSA.toString(), "isto nao e json").andExpect(status().isBadRequest());
-
-		verifyNoInteractions(servico);
+	void assumirNaoPrecisaDeCorpo() throws Exception {
+		mvc.perform(post("/api/fila/{id}/assumir", CONVERSA))
+				.andExpect(status().isNoContent());
+		verify(servico).atribuirAtendente(CONVERSA, ATENDENTE);
 	}
 
 	@Test

@@ -7,7 +7,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,16 +14,18 @@ import org.springframework.web.bind.annotation.RestController;
 import br.com.wxnchatbot.backend.service.ConversaNaFila;
 import br.com.wxnchatbot.backend.service.DetalheConversaFila;
 import br.com.wxnchatbot.backend.service.FilaConversasServico;
-import jakarta.validation.Valid;
+import br.com.wxnchatbot.backend.autenticacao.AtendenteAutenticado;
 
 @RestController
 @RequestMapping("/api/fila")
 public class FilaConversasController {
 
 	private final FilaConversasServico servico;
+	private final AtendenteAutenticado atendenteAutenticado;
 
-	public FilaConversasController(FilaConversasServico servico) {
+	public FilaConversasController(FilaConversasServico servico, AtendenteAutenticado atendenteAutenticado) {
 		this.servico = servico;
+		this.atendenteAutenticado = atendenteAutenticado;
 	}
 
 	@GetMapping
@@ -39,7 +40,7 @@ public class FilaConversasController {
 
 	@PostMapping("/{conversaId}/assumir")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void assumir(@PathVariable UUID conversaId, @Valid @RequestBody AssumirConversaRequisicao requisicao) {
-		servico.atribuirAtendente(conversaId, requisicao.atendenteId());
+	public void assumir(@PathVariable UUID conversaId) {
+		servico.atribuirAtendente(conversaId, atendenteAutenticado.id());
 	}
 }
